@@ -1,3 +1,20 @@
 {
-    "kiroAgent.configureMCP": "Disabled"
+  // Cross-platform vscode settings
+  "files.eol": "auto",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "WSL": {
+      "path": "wsl.exe",
+      "args": [],
+      "icon": "terminal-ubuntu"
+    }
+  },
+  "editor.formatOnSave": true,
+  // kiro agent settings
+  "kiroAgent.enable": true,
+  "kiroAgent.configureMCP": "Disabled"
 }
