@@ -39,8 +39,8 @@ irm https://astral.sh/uv/install.ps1 | iex
 
 ```powershell
 # リポジトリをクローン
-git clone https://github.com/wsl-kernel-watcher/wsl-kernel-watcher.git
-cd wsl-kernel-watcher
+git clone https://github.com/scottlz0310/WSL-kernel-watcher.git
+cd WSL-kernel-watcher
 
 # 仮想環境を作成し、依存関係をインストール
 uv sync
@@ -65,10 +65,10 @@ python -m pipx ensurepath
 
 ```powershell
 # GitHubから直接インストール
-pipx install git+https://github.com/wsl-kernel-watcher/wsl-kernel-watcher.git
+pipx install git+https://github.com/scottlz0310/WSL-kernel-watcher.git
 
 # または、ローカルディレクトリからインストール
-cd wsl-kernel-watcher
+cd WSL-kernel-watcher
 pipx install .
 
 # アプリケーションを実行
@@ -79,8 +79,8 @@ wsl-kernel-watcher
 
 ```powershell
 # リポジトリをクローン
-git clone https://github.com/wsl-kernel-watcher/wsl-kernel-watcher.git
-cd wsl-kernel-watcher
+git clone https://github.com/scottlz0310/WSL-kernel-watcher.git
+cd WSL-kernel-watcher
 
 # 仮想環境を作成
 uv venv
@@ -164,7 +164,7 @@ uv run mypy src/
 ## プロジェクト構造
 
 ```
-wsl-kernel-watcher/
+WSL-kernel-watcher/
 ├── src/                    # ソースコード
 │   ├── __init__.py
 │   ├── main.py            # エントリーポイント

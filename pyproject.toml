@@ -79,11 +79,11 @@ wsl-kernel-watcher = "src.main:main"
 wkw = "src.main:main"
 
 [project.urls]
-Homepage = "https://github.com/wsl-kernel-watcher/wsl-kernel-watcher"
-Repository = "https://github.com/wsl-kernel-watcher/wsl-kernel-watcher"
-Issues = "https://github.com/wsl-kernel-watcher/wsl-kernel-watcher/issues"
-Documentation = "https://github.com/wsl-kernel-watcher/wsl-kernel-watcher/blob/main/README.md"
-Changelog = "https://github.com/wsl-kernel-watcher/wsl-kernel-watcher/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/scottlz0310/WSL-kernel-watcher"
+Repository = "https://github.com/scottlz0310/WSL-kernel-watcher"
+Issues = "https://github.com/scottlz0310/WSL-kernel-watcher/issues"
+Documentation = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/README.md"
+Changelog = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/CHANGELOG.md"
 
 
 
