@@ -73,7 +73,7 @@ class TestLogger:
         """ログディレクトリのフォールバック処理テスト"""
         # ホームディレクトリをモック
         mock_home.return_value = Path(r"C:\Users\TestUser")
-        
+
         # APPDATAが設定されていない場合のテスト
         logger_instance = Logger()
         log_dir = logger_instance._get_log_directory()
@@ -114,17 +114,17 @@ class TestLogger:
         with patch.dict("os.environ", {"APPDATA": r"C:\Users\Test\AppData\Roaming"}):
             logger_instance = Logger()
             log_dir = logger_instance._get_log_directory()
-            
+
             expected_dir = Path(r"C:\Users\Test\AppData\Roaming\WSLKernelWatcher\logs")
             assert log_dir == expected_dir
 
     def test_fallback_logger_setup(self) -> None:
         """フォールバックログ設定のテスト"""
         logger_instance = Logger()
-        
+
         # フォールバック設定を強制実行
         logger_instance._setup_fallback_logger()
-        
+
         # ロガーが設定されていることを確認
         assert logger_instance._logger is not None
         assert logger_instance._logger.name == "wsl_kernel_watcher"
@@ -159,23 +159,23 @@ class TestLogRotation:
     def test_update_rotation_config(self) -> None:
         """ローテーション設定更新のテスト"""
         logger_instance = Logger()
-        
+
         # 新しい設定を作成
         new_config = LogRotationConfig(
             max_bytes=1024 * 1024,  # 1MB
             backup_count=2,
         )
-        
+
         # 設定を更新
         logger_instance.update_rotation_config(new_config)
-        
+
         # 設定が更新されたことを確認
         assert logger_instance._rotation_config == new_config
 
     def test_force_log_rotation(self) -> None:
         """強制ログローテーションのテスト"""
         logger_instance = Logger()
-        
+
         # RotatingFileHandlerが存在することを確認
         has_rotating_handler = False
         if logger_instance._logger:
@@ -183,10 +183,10 @@ class TestLogRotation:
                 if isinstance(handler, logging.handlers.RotatingFileHandler):
                     has_rotating_handler = True
                     break
-        
+
         # 強制ローテーションを実行
         result = logger_instance.force_log_rotation()
-        
+
         # RotatingFileHandlerがある場合はTrueが返されることを確認
         if has_rotating_handler:
             assert result is True
@@ -197,33 +197,36 @@ class TestLogRotation:
         """古いログファイル削除のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            
+
             # テスト用のログファイルを作成
             old_log = temp_path / "old.log.1"
             new_log = temp_path / "new.log"
-            
+
             old_log.touch()
             new_log.touch()
-            
+
             # ファイルの更新時刻を古く設定
             import os
             import time
+
             old_time = time.time() - (40 * 24 * 60 * 60)  # 40日前
             os.utime(old_log, (old_time, old_time))
-            
+
             # 新しいLoggerインスタンスを作成（既存のハンドラーの影響を避ける）
             logger_instance = Logger.__new__(Logger)
             logger_instance._logger = None
             logger_instance._rotation_config = LogRotationConfig()
-            
+
             # ログディレクトリをテンプディレクトリに変更
-            with patch.object(logger_instance, '_get_log_directory', return_value=temp_path):
+            with patch.object(
+                logger_instance, "_get_log_directory", return_value=temp_path
+            ):
                 # 簡単なロガーを設定
                 logger_instance._logger = logging.getLogger("test_cleanup")
                 logger_instance._logger.setLevel(logging.INFO)
-                
+
                 logger_instance.cleanup_old_logs(days_to_keep=30)
-            
+
             # 古いファイルが削除され、新しいファイルが残っていることを確認
             assert not old_log.exists()
             assert new_log.exists()
@@ -234,17 +237,19 @@ class TestLogRotation:
             temp_path = Path(temp_dir)
             log_file = temp_path / "wsl_kernel_watcher.log"
             backup_file = temp_path / "wsl_kernel_watcher.log.1"
-            
+
             # テストファイルを作成
             log_file.write_text("main log content")
             backup_file.write_text("backup log content")
-            
+
             logger_instance = Logger()
-            
+
             # ログファイルパスをテンプファイルに変更
-            with patch.object(logger_instance, 'get_log_file_path', return_value=log_file):
+            with patch.object(
+                logger_instance, "get_log_file_path", return_value=log_file
+            ):
                 stats = logger_instance.get_log_stats()
-            
+
             # 統計情報を確認
             assert stats["log_file_path"] == str(log_file)
             assert stats["log_file_size"] > 0
@@ -273,7 +278,9 @@ class TestErrorHandling:
 
     def test_logger_initialization_error(self) -> None:
         """ログ初期化エラーのテスト"""
-        with patch('src.logger.Path.mkdir', side_effect=PermissionError("Permission denied")):
+        with patch(
+            "src.logger.Path.mkdir", side_effect=PermissionError("Permission denied")
+        ):
             # エラーが発生してもフォールバックログが設定されることを確認
             logger_instance = Logger()
             assert logger_instance._logger is not None
@@ -281,11 +288,11 @@ class TestErrorHandling:
     def test_log_stats_error_handling(self) -> None:
         """ログ統計情報取得エラーハンドリングのテスト"""
         logger_instance = Logger()
-        
+
         # 存在しないパスを返すようにモック
-        with patch.object(logger_instance, 'get_log_file_path', return_value=None):
+        with patch.object(logger_instance, "get_log_file_path", return_value=None):
             stats = logger_instance.get_log_stats()
-            
+
             # エラーが発生してもデフォルト値が返されることを確認
             assert stats["log_file_path"] is None
             assert stats["log_file_size"] == 0

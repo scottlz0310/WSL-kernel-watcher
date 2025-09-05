@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import tomllib
+import toml
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +65,8 @@ class ConfigManager:
             return Config()
 
         try:
-            with open(self.config_path, "rb") as f:
-                config_data = tomllib.load(f)
+            with open(self.config_path, encoding="utf-8") as f:
+                config_data = toml.load(f)
 
             # 設定値を検証してConfigオブジェクトを作成
             config = self._create_config_from_dict(config_data)
@@ -116,14 +116,14 @@ class ConfigManager:
         """TOML形式で設定を書き込む"""
         file.write("# WSL Kernel Watcher 設定ファイル\n")
         file.write("# このファイルはアプリケーションの動作を制御します\n\n")
-        
+
         for key, value in config_dict.items():
             if isinstance(value, str):
                 file.write(f'{key} = "{value}"\n')
             elif isinstance(value, bool):
-                file.write(f'{key} = {str(value).lower()}\n')
+                file.write(f"{key} = {str(value).lower()}\n")
             elif isinstance(value, (int, float)):
-                file.write(f'{key} = {value}\n')
+                file.write(f"{key} = {value}\n")
             else:
                 file.write(f'{key} = "{str(value)}"\n')
 

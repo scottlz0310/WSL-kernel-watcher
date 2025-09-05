@@ -1,10 +1,11 @@
 """WSLUtilsクラスのテストモジュール."""
 
 import subprocess
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 
-from src.wsl_utils import WSLUtils, WSLCommandError
+from src.wsl_utils import WSLCommandError, WSLUtils
 
 
 class TestWSLUtils:
@@ -14,7 +15,7 @@ class TestWSLUtils:
         """各テストメソッドの前に実行される初期化処理."""
         self.wsl_utils = WSLUtils(timeout=10)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_current_kernel_version_success(self, mock_run):
         """カーネルバージョン取得の正常系テスト."""
         # モックの設定
@@ -32,10 +33,10 @@ class TestWSLUtils:
             capture_output=True,
             text=True,
             timeout=10,
-            check=True
+            check=True,
         )
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_current_kernel_version_timeout(self, mock_run):
         """カーネルバージョン取得のタイムアウトテスト."""
         # モックの設定
@@ -45,7 +46,7 @@ class TestWSLUtils:
         with pytest.raises(WSLCommandError, match="WSLコマンドがタイムアウトしました"):
             self.wsl_utils.get_current_kernel_version()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_current_kernel_version_command_error(self, mock_run):
         """カーネルバージョン取得のコマンドエラーテスト."""
         # モックの設定
@@ -57,7 +58,7 @@ class TestWSLUtils:
         with pytest.raises(WSLCommandError, match="WSLコマンドの実行に失敗しました"):
             self.wsl_utils.get_current_kernel_version()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_current_kernel_version_file_not_found(self, mock_run):
         """カーネルバージョン取得のファイル未発見テスト."""
         # モックの設定
@@ -93,8 +94,7 @@ class TestWSLUtils:
     def test_compare_versions_with_suffix(self):
         """バージョン比較テスト: サフィックス付きバージョン."""
         result = self.wsl_utils.compare_versions(
-            "5.15.90.1-microsoft-standard-WSL2",
-            "5.15.90.2-microsoft-standard-WSL2"
+            "5.15.90.1-microsoft-standard-WSL2", "5.15.90.2-microsoft-standard-WSL2"
         )
         assert result == -1
 
@@ -118,7 +118,7 @@ class TestWSLUtils:
         with pytest.raises(ValueError, match="バージョン文字列の形式が不正です"):
             self.wsl_utils._parse_version("a.15.90.1")
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_success_default(self, mock_run):
         """ビルドスクリプト実行の正常系テスト（デフォルト）."""
         # モックの設定
@@ -137,7 +137,7 @@ class TestWSLUtils:
         assert args[1] == "bash"
         assert args[2] == "-c"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_success_custom(self, mock_run):
         """ビルドスクリプト実行の正常系テスト（カスタム）."""
         # モックの設定
@@ -155,21 +155,23 @@ class TestWSLUtils:
             capture_output=True,
             text=True,
             timeout=200,  # timeout * 20
-            check=True
+            check=True,
         )
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_with_progress_callback(self, mock_run):
         """ビルドスクリプト実行のプログレスコールバックテスト."""
         # モックの設定
         mock_result = Mock()
         mock_result.stdout = "ビルドが完了しました。"
         mock_run.return_value = mock_result
-        
+
         progress_callback = Mock()
 
         # テスト実行
-        result = self.wsl_utils.execute_build_script(progress_callback=progress_callback)
+        result = self.wsl_utils.execute_build_script(
+            progress_callback=progress_callback
+        )
 
         # 検証
         assert result is True
@@ -178,7 +180,7 @@ class TestWSLUtils:
         progress_callback.assert_any_call("ビルドコマンドを実行中...")
         progress_callback.assert_any_call("ビルドが正常に完了しました")
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_timeout(self, mock_run):
         """ビルドスクリプト実行のタイムアウトテスト."""
         # モックの設定
@@ -190,7 +192,7 @@ class TestWSLUtils:
         # 検証
         assert result is False
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_command_error(self, mock_run):
         """ビルドスクリプト実行のコマンドエラーテスト."""
         # モックの設定
@@ -204,7 +206,7 @@ class TestWSLUtils:
         # 検証
         assert result is False
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_build_script_file_not_found(self, mock_run):
         """ビルドスクリプト実行のファイル未発見テスト."""
         # モックの設定
@@ -216,19 +218,21 @@ class TestWSLUtils:
         # 検証
         assert result is False
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_build_status_success(self, mock_run):
         """ビルド状況取得の正常系テスト."""
         # モックの設定
         mock_run.side_effect = [
             # uname -a の結果
-            Mock(stdout="Linux DESKTOP-ABC 5.15.90.1-microsoft-standard-WSL2 #1 SMP x86_64 GNU/Linux\n"),
+            Mock(
+                stdout="Linux DESKTOP-ABC 5.15.90.1-microsoft-standard-WSL2 #1 SMP x86_64 GNU/Linux\n"
+            ),
             # which gcc の結果
             Mock(stdout="/usr/bin/gcc\n"),
             # which make の結果
             Mock(stdout="/usr/bin/make\n"),
             # which git の結果
-            Mock(stdout="/usr/bin/git\n")
+            Mock(stdout="/usr/bin/git\n"),
         ]
 
         # テスト実行
@@ -240,7 +244,7 @@ class TestWSLUtils:
         assert result["build_tools_available"] is True
         assert result["last_check"] == "現在"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_build_status_error(self, mock_run):
         """ビルド状況取得のエラーテスト."""
         # モックの設定
@@ -255,7 +259,7 @@ class TestWSLUtils:
         assert result["build_tools_available"] is False
         assert "error" in result
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_check_build_tools_success(self, mock_run):
         """ビルドツールチェックの正常系テスト."""
         # モックの設定
@@ -268,7 +272,7 @@ class TestWSLUtils:
         assert result is True
         assert mock_run.call_count == 3  # gcc, make, git
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_check_build_tools_missing_tool(self, mock_run):
         """ビルドツールチェックのツール不足テスト."""
         # モックの設定
@@ -283,7 +287,7 @@ class TestWSLUtils:
     def test_get_default_build_commands(self):
         """デフォルトビルドコマンド取得テスト."""
         result = self.wsl_utils._get_default_build_commands()
-        
+
         assert isinstance(result, list)
         assert result[0] == "wsl"
         assert result[1] == "bash"
@@ -298,13 +302,13 @@ class TestWSLCommandError:
         """WSLCommandError例外の作成テスト."""
         error_message = "テストエラーメッセージ"
         error = WSLCommandError(error_message)
-        
+
         assert str(error) == error_message
         assert isinstance(error, Exception)
 
     def test_wsl_command_error_inheritance(self):
         """WSLCommandError例外の継承テスト."""
         error = WSLCommandError("テスト")
-        
+
         assert isinstance(error, Exception)
         assert isinstance(error, WSLCommandError)

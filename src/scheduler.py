@@ -139,7 +139,7 @@ class Scheduler:
 
             # 統合更新チェックロジックを実行
             update_info = self._perform_integrated_update_check()
-            
+
             if not update_info:
                 self.logger.warning("統合更新チェックに失敗しました")
                 return False
@@ -163,7 +163,7 @@ class Scheduler:
             # Step 1: GitHub APIから最新リリース情報を取得
             self.logger.debug("GitHub APIから最新リリース情報を取得中...")
             latest_release = self.github_client.get_latest_stable_release()
-            
+
             if not latest_release:
                 self.logger.warning("最新リリース情報を取得できませんでした")
                 return None
@@ -174,7 +174,7 @@ class Scheduler:
             # Step 2: WSL環境から現在のカーネルバージョンを取得
             self.logger.debug("WSL環境から現在のカーネルバージョンを取得中...")
             current_version = self.wsl_utils.get_current_kernel_version()
-            
+
             if not current_version:
                 self.logger.warning("現在のWSLカーネルバージョンを取得できませんでした")
                 return None
@@ -230,7 +230,7 @@ class Scheduler:
             # 更新が利用可能で通知が必要な場合
             if update_info["update_available"] and update_info["should_notify"]:
                 success = self._execute_notification_logic(update_info)
-                
+
                 if success:
                     self._last_known_version = update_info["latest_version"]
                     self.logger.info("更新通知処理が完了しました")
@@ -289,10 +289,10 @@ class Scheduler:
                 self.logger.info(
                     f"更新通知を表示しました: {current_version} -> {latest_version}"
                 )
-                
+
                 # 通知クリックハンドラーを設定（まだ設定されていない場合）
                 self._ensure_notification_click_handler()
-                
+
                 return True
             else:
                 self.logger.error("更新通知の表示に失敗しました")
@@ -308,11 +308,13 @@ class Scheduler:
         """
         try:
             # 通知クリック時のコールバック関数を定義
-            def on_notification_click(current_version: str, latest_version: str) -> None:
+            def on_notification_click(
+                current_version: str, latest_version: str
+            ) -> None:
                 self.logger.info(
                     f"通知クリックイベント: {current_version} -> {latest_version}"
                 )
-                
+
                 # ビルドアクションが有効な場合の処理は NotificationManager で実行される
                 # ここでは追加のログ記録やメトリクス収集などを行う
                 self._record_notification_interaction(current_version, latest_version)
@@ -322,9 +324,13 @@ class Scheduler:
             self.logger.debug("通知クリックハンドラーを設定しました")
 
         except Exception as e:
-            self.logger.error(f"通知クリックハンドラーの設定中にエラーが発生しました: {e}")
+            self.logger.error(
+                f"通知クリックハンドラーの設定中にエラーが発生しました: {e}"
+            )
 
-    def _record_notification_interaction(self, current_version: str, latest_version: str) -> None:
+    def _record_notification_interaction(
+        self, current_version: str, latest_version: str
+    ) -> None:
         """
         通知インタラクションを記録
 
@@ -340,17 +346,15 @@ class Scheduler:
                 "action": "notification_clicked",
                 "build_action_enabled": self.config.enable_build_action,
             }
-            
+
             self.logger.info(f"通知インタラクションを記録: {interaction_info}")
-            
+
             # 将来的にはメトリクス収集システムに送信することも可能
-            
+
         except Exception as e:
             self.logger.error(f"通知インタラクション記録中にエラーが発生しました: {e}")
 
-    def _compare_versions_for_notification(
-        self, current: str, latest: str
-    ) -> int:
+    def _compare_versions_for_notification(self, current: str, latest: str) -> int:
         """
         通知用のバージョン比較
 
@@ -374,9 +378,7 @@ class Scheduler:
             # 例: "5.15.90.1-microsoft-standard-WSL2" -> "5.15.90.1"
             current_clean = self._extract_version_from_kernel(current)
 
-            self.logger.debug(
-                f"バージョン比較: {current_clean} vs {latest_clean}"
-            )
+            self.logger.debug(f"バージョン比較: {current_clean} vs {latest_clean}")
 
             return self.wsl_utils.compare_versions(current_clean, latest_clean)
 
@@ -446,9 +448,7 @@ class Scheduler:
 
         # 同じバージョンについて既に通知済みの場合は通知しない
         if self._last_known_version == latest_version:
-            self.logger.debug(
-                f"バージョン {latest_version} については既に通知済みです"
-            )
+            self.logger.debug(f"バージョン {latest_version} については既に通知済みです")
             return False
 
         return True
@@ -464,7 +464,9 @@ class Scheduler:
 
         # エラーの種類に応じた処理
         if "GitHub API" in error_message or "requests" in error_message:
-            self.logger.warning("GitHub APIエラーが発生しました。次回チェック時に再試行します")
+            self.logger.warning(
+                "GitHub APIエラーが発生しました。次回チェック時に再試行します"
+            )
         elif "WSL" in error_message:
             self.logger.warning("WSLエラーが発生しました。WSL環境を確認してください")
         else:

@@ -15,7 +15,7 @@ from typing import Optional
 
 class LogRotationConfig:
     """ログローテーション設定クラス"""
-    
+
     def __init__(
         self,
         max_bytes: int = 10 * 1024 * 1024,  # 10MB
@@ -103,13 +103,13 @@ class Logger:
         """フォールバック用の基本ログ設定"""
         self._logger = logging.getLogger("wsl_kernel_watcher")
         self._logger.setLevel(logging.INFO)
-        
+
         # コンソールハンドラーのみ設定
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(formatter)
-        
+
         self._logger.addHandler(console_handler)
         self._logger.warning("フォールバックログ設定を使用しています")
 
@@ -123,7 +123,7 @@ class Logger:
             # フォールバック: ユーザーホームディレクトリ
             home = Path.home()
             log_dir = home / ".wsl_kernel_watcher" / "logs"
-        
+
         return log_dir
 
     def get_logger(self) -> logging.Logger:
@@ -152,15 +152,17 @@ class Logger:
             old_level = self._logger.level
             new_level = level_map[level.upper()]
             self._logger.setLevel(new_level)
-            
+
             # ハンドラーのレベルも更新
             for handler in self._logger.handlers:
                 if isinstance(handler, logging.handlers.RotatingFileHandler):
                     handler.setLevel(logging.DEBUG)  # ファイルは常にDEBUGレベル
                 elif isinstance(handler, logging.StreamHandler):
                     handler.setLevel(new_level)  # コンソールは設定されたレベル
-            
-            self._logger.info(f"ログレベルを {logging.getLevelName(old_level)} から {level.upper()} に変更しました")
+
+            self._logger.info(
+                f"ログレベルを {logging.getLevelName(old_level)} から {level.upper()} に変更しました"
+            )
         else:
             self._logger.warning(f"無効なログレベル: {level}")
 
@@ -168,16 +170,17 @@ class Logger:
         """古いログファイルを削除"""
         if self._logger is None:
             return
-            
+
         try:
             log_dir = self._get_log_directory()
             if not log_dir.exists():
                 return
-                
+
             import time
+
             current_time = time.time()
             cutoff_time = current_time - (days_to_keep * 24 * 60 * 60)
-            
+
             deleted_count = 0
             for log_file in log_dir.glob("*.log*"):
                 if log_file.stat().st_mtime < cutoff_time:
@@ -185,11 +188,13 @@ class Logger:
                         log_file.unlink()
                         deleted_count += 1
                     except OSError as e:
-                        self._logger.warning(f"ログファイル削除に失敗: {log_file} - {e}")
-            
+                        self._logger.warning(
+                            f"ログファイル削除に失敗: {log_file} - {e}"
+                        )
+
             if deleted_count > 0:
                 self._logger.info(f"{deleted_count}個の古いログファイルを削除しました")
-                
+
         except Exception as e:
             self._logger.error(f"ログファイルクリーンアップ中にエラーが発生: {e}")
 
@@ -205,16 +210,16 @@ class Logger:
         """ログローテーション設定を動的に更新"""
         if self._logger is None:
             return
-            
+
         self._rotation_config = rotation_config
-        
+
         # 既存のファイルハンドラーを探して更新
         for handler in self._logger.handlers[:]:  # コピーを作成してイテレート
             if isinstance(handler, logging.handlers.RotatingFileHandler):
                 # 古いハンドラーを削除
                 self._logger.removeHandler(handler)
                 handler.close()
-                
+
                 # 新しい設定でハンドラーを再作成
                 log_file = self.get_log_file_path()
                 if log_file:
@@ -225,27 +230,29 @@ class Logger:
                         encoding="utf-8",
                     )
                     new_handler.setLevel(logging.DEBUG)
-                    
+
                     # フォーマッターを設定
                     formatter = logging.Formatter(
                         "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
                         datefmt="%Y-%m-%d %H:%M:%S",
                     )
                     new_handler.setFormatter(formatter)
-                    
+
                     # 新しいハンドラーを追加
                     self._logger.addHandler(new_handler)
-                    
-                    self._logger.info(f"ログローテーション設定を更新しました: "
-                                    f"最大サイズ={rotation_config.max_bytes}bytes, "
-                                    f"バックアップ数={rotation_config.backup_count}")
+
+                    self._logger.info(
+                        f"ログローテーション設定を更新しました: "
+                        f"最大サイズ={rotation_config.max_bytes}bytes, "
+                        f"バックアップ数={rotation_config.backup_count}"
+                    )
                 break
 
     def force_log_rotation(self) -> bool:
         """ログローテーションを強制実行"""
         if self._logger is None:
             return False
-            
+
         try:
             for handler in self._logger.handlers:
                 if isinstance(handler, logging.handlers.RotatingFileHandler):
@@ -266,30 +273,32 @@ class Logger:
             "backup_files": [],
             "total_size": 0,
         }
-        
+
         try:
             log_file = self.get_log_file_path()
             if log_file and log_file.exists():
                 stats["log_file_path"] = str(log_file)
                 stats["log_file_size"] = log_file.stat().st_size
                 stats["total_size"] = stats["log_file_size"]
-                
+
                 # バックアップファイルを検索
                 log_dir = log_file.parent
                 backup_pattern = f"{log_file.name}.*"
                 for backup_file in log_dir.glob(backup_pattern):
                     if backup_file != log_file:
                         backup_size = backup_file.stat().st_size
-                        stats["backup_files"].append({
-                            "path": str(backup_file),
-                            "size": backup_size,
-                        })
+                        stats["backup_files"].append(
+                            {
+                                "path": str(backup_file),
+                                "size": backup_size,
+                            }
+                        )
                         stats["total_size"] += backup_size
-                        
+
         except Exception as e:
             if self._logger:
                 self._logger.error(f"ログ統計情報取得中にエラー: {e}")
-                
+
         return stats
 
 

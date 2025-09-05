@@ -56,6 +56,12 @@ test:
 test-cov:
 	uv run pytest --cov=src --cov-report=html --cov-report=term-missing
 
+test-e2e:
+	uv run pytest tests/test_e2e_*.py -v
+
+test-notification:
+	uv run pytest tests/test_e2e_notification.py -v -s
+
 lint:
 	uv run ruff check .
 
