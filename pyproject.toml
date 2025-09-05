@@ -72,6 +72,8 @@ dev = [
     "pre-commit>=4.0.0",
     "build>=1.0.0",
     "twine>=5.0.0",
+    "types-requests>=2.32.4.20250809",
+    "types-toml>=0.10.8.20240310",
 ]
 
 [project.scripts]
@@ -84,12 +86,6 @@ Repository = "https://github.com/scottlz0310/WSL-kernel-watcher"
 Issues = "https://github.com/scottlz0310/WSL-kernel-watcher/issues"
 Documentation = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/README.md"
 Changelog = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/CHANGELOG.md"
-
-[dependency-groups]
-dev = [
-    "types-requests>=2.32.4.20250809",
-    "types-toml>=0.10.8.20240310",
-]
 
 
 
