@@ -13,6 +13,7 @@ Microsoft公式のWSL2 Linuxカーネルリポジトリ（microsoft/WSL2-Linux-K
 - プレリリース（RC版、プレビュー版）の除外
 - 現在のWSLカーネルバージョンとの比較
 - Windowsトースト通知による更新通知
+- **🆕 ワンショットモード**: 一度だけチェックして終了（CI/CDやスケジュールタスク向け）
 - タスクトレイでの常駐動作
 - 設定ファイルによるカスタマイズ
 - 包括的なログ機能
@@ -100,11 +101,23 @@ uv run python -m src.main
 ### 基本的な実行
 
 ```powershell
-# 開発環境で実行
+# 常駐モード（デフォルト）
 uv run python -m src.main
 
 # または
 uv run wsl-kernel-watcher
+```
+
+### ワンショットモード 🆕
+
+一度だけチェックして終了するモードです。CI/CDパイプラインやスケジュールタスクでの利用に適しています。
+
+```powershell
+# config.tomlでexecution_mode = "oneshot"に設定して実行
+uv run wsl-kernel-watcher
+
+# または直接実行（設定ファイルがワンショットモードに設定されている場合）
+python -m src.main
 ```
 
 ### 設定
@@ -113,6 +126,9 @@ uv run wsl-kernel-watcher
 
 ```toml
 [general]
+# 実行モード: "continuous" (常駐) または "oneshot" (ワンショット)
+execution_mode = "continuous"  # または "oneshot"
+
 # チェック間隔（分）
 check_interval_minutes = 30
 
@@ -123,9 +139,26 @@ repository_url = "microsoft/WSL2-Linux-Kernel"
 # 通知機能の有効化
 enabled = true
 
+[notification.click_action]
+# ビルドアクションの有効化
+enable_build_action = false
+
 [logging]
 # ログレベル
 level = "INFO"
+```
+
+#### ワンショットモード設定例
+
+CI/CDパイプラインやスケジュールタスクでの利用時：
+
+```toml
+[general]
+execution_mode = "oneshot"
+check_interval_minutes = 30  # ワンショットモードでは無視されます
+
+[notification]
+enabled = true  # 更新がある場合は必ず通知します
 ```
 
 ## 開発

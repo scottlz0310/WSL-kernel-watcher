@@ -19,6 +19,7 @@ class Config:
     """アプリケーション設定を格納するデータクラス
 
     Attributes:
+        execution_mode: 実行モード（continuous, oneshot）
         check_interval_minutes: GitHub APIのチェック間隔（分）
         repository_url: 監視対象のGitHubリポジトリ
         enable_build_action: 通知クリック時のビルドアクション有効化
@@ -26,6 +27,7 @@ class Config:
         log_level: ログレベル（DEBUG, INFO, WARNING, ERROR）
     """
 
+    execution_mode: str = "continuous"
     check_interval_minutes: int = 30
     repository_url: str = "microsoft/WSL2-Linux-Kernel"
     enable_build_action: bool = False
@@ -97,6 +99,7 @@ class ConfigManager:
         """
         default_config = Config()
         config_dict = {
+            "execution_mode": default_config.execution_mode,
             "check_interval_minutes": default_config.check_interval_minutes,
             "repository_url": default_config.repository_url,
             "enable_build_action": default_config.enable_build_action,
@@ -117,15 +120,24 @@ class ConfigManager:
         file.write("# WSL Kernel Watcher 設定ファイル\n")
         file.write("# このファイルはアプリケーションの動作を制御します\n\n")
 
-        for key, value in config_dict.items():
-            if isinstance(value, str):
-                file.write(f'{key} = "{value}"\n')
-            elif isinstance(value, bool):
-                file.write(f"{key} = {str(value).lower()}\n")
-            elif isinstance(value, (int, float)):
-                file.write(f"{key} = {value}\n")
-            else:
-                file.write(f'{key} = "{str(value)}"\n')
+        # 階層構造で書き込み
+        file.write("[general]\n")
+        file.write(f'execution_mode = "{config_dict["execution_mode"]}"\n')
+        file.write(
+            f"check_interval_minutes = {config_dict['check_interval_minutes']}\n"
+        )
+        file.write(f'repository_url = "{config_dict["repository_url"]}"\n\n')
+
+        file.write("[notification]\n")
+        file.write(f"enabled = {str(config_dict['notification_enabled']).lower()}\n\n")
+
+        file.write("[notification.click_action]\n")
+        file.write(
+            f"enable_build_action = {str(config_dict['enable_build_action']).lower()}\n\n"
+        )
+
+        file.write("[logging]\n")
+        file.write(f'level = "{config_dict["log_level"]}"\n')
 
     def validate_config(self, config: Config) -> bool:
         """設定値の妥当性を検証
@@ -175,6 +187,17 @@ class ConfigManager:
             )
             return False
 
+        # 実行モードの検証
+        valid_execution_modes = ["continuous", "oneshot"]
+        if (
+            not isinstance(config.execution_mode, str)
+            or config.execution_mode not in valid_execution_modes
+        ):
+            logger.error(
+                f"実行モードが不正です: {config.execution_mode}（{', '.join(valid_execution_modes)}のいずれかを指定してください）"
+            )
+            return False
+
         # ログレベルの検証
         valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR"]
         if (
@@ -197,16 +220,36 @@ class ConfigManager:
         Returns:
             Config: 設定オブジェクト
         """
+        # 階層構造とフラット構造の両方に対応
+        general = config_data.get("general", {})
+        notification = config_data.get("notification", {})
+        notification_click_action = notification.get("click_action", {})
+        logging_config = config_data.get("logging", {})
+
         return Config(
-            check_interval_minutes=config_data.get(
-                "check_interval_minutes", Config().check_interval_minutes
+            execution_mode=general.get(
+                "execution_mode",
+                config_data.get("execution_mode", Config().execution_mode),
             ),
-            repository_url=config_data.get("repository_url", Config().repository_url),
-            enable_build_action=config_data.get(
-                "enable_build_action", Config().enable_build_action
+            check_interval_minutes=general.get(
+                "check_interval_minutes",
+                config_data.get(
+                    "check_interval_minutes", Config().check_interval_minutes
+                ),
             ),
-            notification_enabled=config_data.get(
-                "notification_enabled", Config().notification_enabled
+            repository_url=general.get(
+                "repository_url",
+                config_data.get("repository_url", Config().repository_url),
             ),
-            log_level=config_data.get("log_level", Config().log_level),
+            enable_build_action=notification_click_action.get(
+                "enable_build_action",
+                config_data.get("enable_build_action", Config().enable_build_action),
+            ),
+            notification_enabled=notification.get(
+                "enabled",
+                config_data.get("notification_enabled", Config().notification_enabled),
+            ),
+            log_level=logging_config.get(
+                "level", config_data.get("log_level", Config().log_level)
+            ),
         )

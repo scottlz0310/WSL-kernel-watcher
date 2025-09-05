@@ -253,7 +253,7 @@ class TestWSLKernelWatcherApp:
         # 結果を検証
         assert self.app._shutdown_requested is True
         mock_scheduler.return_value.stop_monitoring.assert_called_once()
-        mock_tray_manager.return_value.quit_application.assert_called_once()
+        mock_tray_manager.return_value.stop_icon.assert_called_once()
 
     @patch("src.main.TrayManager")
     @patch("src.main.Scheduler")
@@ -324,12 +324,15 @@ class TestMainFunction:
     @patch("src.main.WSLKernelWatcherApp")
     @pytest.mark.timeout(5)  # 5秒でタイムアウト
     def test_main_normal_execution(self, mock_app_class):
-        """正常実行のテスト"""
+        """正常実行のテスト（常駐モード）"""
         # モックアプリケーションの設定
         mock_app = Mock()
         mock_app.initialize.return_value = True
         mock_app.start.return_value = True
         mock_app._shutdown_requested = False
+        mock_config = Mock()
+        mock_config.execution_mode = "continuous"
+        mock_app.config = mock_config
         mock_app_class.return_value = mock_app
 
         # メインループを短時間で終了させるため、runメソッドをモック
@@ -352,6 +355,33 @@ class TestMainFunction:
         mock_app.shutdown.assert_called_once()
 
     @patch("src.main.WSLKernelWatcherApp")
+    @pytest.mark.timeout(5)  # 5秒でタイムアウト
+    def test_main_oneshot_execution(self, mock_app_class):
+        """ワンショットモード実行のテスト"""
+        # モックアプリケーションの設定
+        mock_app = Mock()
+        mock_app.initialize.return_value = True
+        mock_config = Mock()
+        mock_config.execution_mode = "oneshot"
+        mock_app.config = mock_config
+        mock_app_class.return_value = mock_app
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        # 正常終了（exit code 0）を確認
+        assert exc_info.value.code == 0
+
+        # アプリケーションのメソッドが呼び出されたことを確認
+        mock_app.initialize.assert_called_once()
+        # ワンショットモードではstartは呼び出されない
+        mock_app.start.assert_not_called()
+        # ワンショットモードではrun_oneshotが呼び出される
+        mock_app.run_oneshot.assert_called_once()
+        # ワンショットモードではshutdownは呼び出されない（シンプルな終了）
+        mock_app.shutdown.assert_not_called()
+
+    @patch("src.main.WSLKernelWatcherApp")
     def test_main_initialization_failure(self, mock_app_class):
         """初期化失敗のテスト"""
         # モックアプリケーションの設定（初期化失敗）
@@ -372,11 +402,14 @@ class TestMainFunction:
 
     @patch("src.main.WSLKernelWatcherApp")
     def test_main_start_failure(self, mock_app_class):
-        """開始失敗のテスト"""
+        """開始失敗のテスト（常駐モード）"""
         # モックアプリケーションの設定（開始失敗）
         mock_app = Mock()
         mock_app.initialize.return_value = True
         mock_app.start.return_value = False
+        mock_config = Mock()
+        mock_config.execution_mode = "continuous"
+        mock_app.config = mock_config
         mock_app_class.return_value = mock_app
 
         with pytest.raises(SystemExit) as exc_info:
@@ -393,11 +426,14 @@ class TestMainFunction:
     @patch("src.main.WSLKernelWatcherApp")
     @pytest.mark.timeout(3)  # 3秒でタイムアウト
     def test_main_keyboard_interrupt(self, mock_app_class):
-        """キーボード割り込みのテスト"""
+        """キーボード割り込みのテスト（常駐モード）"""
         # モックアプリケーションの設定
         mock_app = Mock()
         mock_app.initialize.return_value = True
         mock_app.start.return_value = True
+        mock_config = Mock()
+        mock_config.execution_mode = "continuous"
+        mock_app.config = mock_config
         mock_app_class.return_value = mock_app
 
         # runメソッドでKeyboardInterruptを発生させる
@@ -430,6 +466,194 @@ class TestMainFunction:
         mock_app.shutdown.assert_called_once()
 
 
+class TestOneshotMode:
+    """ワンショットモードの詳細テスト"""
+
+    def setup_method(self):
+        """各テストメソッドの前に実行される初期化処理"""
+        self.app = WSLKernelWatcherApp()
+
+    def teardown_method(self):
+        """各テストメソッドの後に実行されるクリーンアップ処理"""
+        if self.app:
+            # ワンショットモードでは通常のshutdownは呼ばない
+            pass
+
+    @patch("src.main.Scheduler")
+    @patch("src.main.NotificationManager")
+    @patch("src.main.GitHubAPIClient")
+    @patch("src.main.WSLUtils")
+    @patch("src.main.ConfigManager")
+    def test_oneshot_mode_initialization(
+        self,
+        mock_config_manager,
+        mock_wsl_utils,
+        mock_github_client,
+        mock_notification_manager,
+        mock_scheduler,
+    ):
+        """ワンショットモードの初期化テスト（タスクトレイなし）"""
+        # ワンショットモード設定
+        mock_config = Config()
+        mock_config.execution_mode = "oneshot"
+        mock_config_manager.return_value.load_config.return_value = mock_config
+        mock_wsl_utils.return_value.get_current_kernel_version.return_value = (
+            "5.15.90.1"
+        )
+
+        mock_release = Release(
+            tag_name="linux-msft-wsl-5.15.90.2",
+            name="Linux-msft-wsl-5.15.90.2",
+            published_at=None,
+            prerelease=False,
+            html_url="https://github.com/test",
+        )
+        mock_github_client.return_value.get_latest_stable_release.return_value = (
+            mock_release
+        )
+        mock_notification_manager.return_value.is_notification_supported.return_value = True
+
+        # 初期化を実行
+        result = self.app.initialize()
+
+        # 結果を検証
+        assert result is True
+        assert self.app.config is not None
+        assert self.app.config.execution_mode == "oneshot"
+        assert self.app.github_client is not None
+        assert self.app.wsl_utils is not None
+        assert self.app.notification_manager is not None
+        assert self.app.scheduler is not None
+        # ワンショットモードではタスクトレイは初期化されない
+        assert self.app.tray_manager is None
+
+    @patch("src.main.Scheduler")
+    @patch("src.main.NotificationManager")
+    @patch("src.main.GitHubAPIClient")
+    @patch("src.main.WSLUtils")
+    @patch("src.main.ConfigManager")
+    def test_oneshot_mode_execution(
+        self,
+        mock_config_manager,
+        mock_wsl_utils,
+        mock_github_client,
+        mock_notification_manager,
+        mock_scheduler,
+    ):
+        """ワンショットモードの実行テスト"""
+        # ワンショットモード設定
+        mock_config = Config()
+        mock_config.execution_mode = "oneshot"
+        mock_config_manager.return_value.load_config.return_value = mock_config
+        mock_wsl_utils.return_value.get_current_kernel_version.return_value = (
+            "5.15.90.1"
+        )
+
+        mock_release = Release(
+            tag_name="linux-msft-wsl-5.15.90.2",
+            name="Linux-msft-wsl-5.15.90.2",
+            published_at=None,
+            prerelease=False,
+            html_url="https://github.com/test",
+        )
+        mock_github_client.return_value.get_latest_stable_release.return_value = (
+            mock_release
+        )
+        mock_notification_manager.return_value.is_notification_supported.return_value = True
+        mock_scheduler.return_value.check_for_updates.return_value = True
+
+        # 初期化と実行
+        init_result = self.app.initialize()
+        assert init_result is True
+
+        # ワンショット実行
+        self.app.run_oneshot()
+
+        # スケジューラーのcheck_for_updatesが force_notify=True で呼び出されることを確認
+        mock_scheduler.return_value.check_for_updates.assert_called_once_with(
+            force_notify=True
+        )
+
+    @patch("src.main.Scheduler")
+    @patch("src.main.NotificationManager")
+    @patch("src.main.GitHubAPIClient")
+    @patch("src.main.WSLUtils")
+    @patch("src.main.ConfigManager")
+    def test_oneshot_mode_scheduler_failure(
+        self,
+        mock_config_manager,
+        mock_wsl_utils,
+        mock_github_client,
+        mock_notification_manager,
+        mock_scheduler,
+    ):
+        """ワンショットモードでのスケジューラー失敗テスト"""
+        # ワンショットモード設定
+        mock_config = Config()
+        mock_config.execution_mode = "oneshot"
+        mock_config_manager.return_value.load_config.return_value = mock_config
+        mock_wsl_utils.return_value.get_current_kernel_version.return_value = (
+            "5.15.90.1"
+        )
+
+        mock_release = Release(
+            tag_name="linux-msft-wsl-5.15.90.2",
+            name="Linux-msft-wsl-5.15.90.2",
+            published_at=None,
+            prerelease=False,
+            html_url="https://github.com/test",
+        )
+        mock_github_client.return_value.get_latest_stable_release.return_value = (
+            mock_release
+        )
+        mock_notification_manager.return_value.is_notification_supported.return_value = True
+        mock_scheduler.return_value.check_for_updates.return_value = False
+
+        # 初期化と実行
+        init_result = self.app.initialize()
+        assert init_result is True
+
+        # ワンショット実行（失敗しても例外は発生しない）
+        self.app.run_oneshot()
+
+        # スケジューラーのcheck_for_updatesが呼び出されることを確認
+        mock_scheduler.return_value.check_for_updates.assert_called_once_with(
+            force_notify=True
+        )
+
+    @patch("src.main.Scheduler")
+    @patch("src.main.NotificationManager")
+    @patch("src.main.GitHubAPIClient")
+    @patch("src.main.WSLUtils")
+    @patch("src.main.ConfigManager")
+    def test_oneshot_mode_no_scheduler(
+        self,
+        mock_config_manager,
+        mock_wsl_utils,
+        mock_github_client,
+        mock_notification_manager,
+        mock_scheduler,
+    ):
+        """ワンショットモードでスケジューラーが初期化されていない場合のテスト"""
+        # ワンショットモード設定
+        mock_config = Config()
+        mock_config.execution_mode = "oneshot"
+        mock_config_manager.return_value.load_config.return_value = mock_config
+
+        # スケジューラー初期化を失敗させる
+        mock_scheduler.side_effect = Exception("スケジューラー初期化エラー")
+
+        # 初期化は失敗する
+        init_result = self.app.initialize()
+        assert init_result is False
+
+        # schedulerがNoneの状態でワンショット実行
+        self.app.run_oneshot()
+
+        # エラーログが出力されるが、例外は発生しない
+        # （実際のログ出力の確認は統合テストで行う）
+
+
 class TestEndToEndIntegration:
     """エンドツーエンド統合テスト"""
 
@@ -440,7 +664,7 @@ class TestEndToEndIntegration:
     @patch("src.main.WSLUtils")
     @patch("src.main.ConfigManager")
     @pytest.mark.timeout(5)  # 5秒でタイムアウト
-    def test_full_application_lifecycle(
+    def test_full_application_lifecycle_continuous(
         self,
         mock_config_manager,
         mock_wsl_utils,
@@ -449,9 +673,10 @@ class TestEndToEndIntegration:
         mock_scheduler,
         mock_tray_manager,
     ):
-        """アプリケーション全体のライフサイクルテスト"""
+        """アプリケーション全体のライフサイクルテスト（常駐モード）"""
         # 完全なモック設定
         mock_config = Config()
+        mock_config.execution_mode = "continuous"
         mock_config.check_interval_minutes = 30
         mock_config.repository_url = "microsoft/WSL2-Linux-Kernel"
         mock_config.enable_build_action = False
@@ -511,7 +736,79 @@ class TestEndToEndIntegration:
 
             # 終了処理が正しく呼び出されたことを確認
             mock_scheduler.return_value.stop_monitoring.assert_called_once()
-            mock_tray_manager.return_value.quit_application.assert_called_once()
+            mock_tray_manager.return_value.stop_icon.assert_called_once()
+
+    @patch("src.main.Scheduler")
+    @patch("src.main.NotificationManager")
+    @patch("src.main.GitHubAPIClient")
+    @patch("src.main.WSLUtils")
+    @patch("src.main.ConfigManager")
+    @pytest.mark.timeout(5)  # 5秒でタイムアウト
+    def test_full_application_lifecycle_oneshot(
+        self,
+        mock_config_manager,
+        mock_wsl_utils,
+        mock_github_client,
+        mock_notification_manager,
+        mock_scheduler,
+    ):
+        """アプリケーション全体のライフサイクルテスト（ワンショットモード）"""
+        # ワンショットモード設定
+        mock_config = Config()
+        mock_config.execution_mode = "oneshot"
+        mock_config.check_interval_minutes = 30
+        mock_config.repository_url = "microsoft/WSL2-Linux-Kernel"
+        mock_config.enable_build_action = False
+        mock_config.notification_enabled = True
+        mock_config.log_level = "INFO"
+
+        mock_config_manager.return_value.load_config.return_value = mock_config
+        mock_wsl_utils.return_value.get_current_kernel_version.return_value = (
+            "5.15.90.1"
+        )
+
+        mock_release = Release(
+            tag_name="linux-msft-wsl-5.15.90.2",
+            name="Linux-msft-wsl-5.15.90.2",
+            published_at=None,
+            prerelease=False,
+            html_url="https://github.com/microsoft/WSL2-Linux-Kernel/releases/tag/linux-msft-wsl-5.15.90.2",
+        )
+        mock_github_client.return_value.get_latest_stable_release.return_value = (
+            mock_release
+        )
+        mock_notification_manager.return_value.is_notification_supported.return_value = True
+        mock_scheduler.return_value.check_for_updates.return_value = True
+
+        # アプリケーションを作成・初期化・実行
+        app = WSLKernelWatcherApp()
+
+        # 初期化
+        init_result = app.initialize()
+        assert init_result is True
+
+        # ワンショット実行
+        app.run_oneshot()
+
+        # 各コンポーネントが正しく呼び出されたことを確認
+        mock_config_manager.assert_called_once()
+        mock_wsl_utils.assert_called_once()
+        mock_github_client.assert_called_once_with("microsoft/WSL2-Linux-Kernel")
+        mock_notification_manager.assert_called_once_with(
+            mock_config, mock_wsl_utils.return_value
+        )
+        mock_scheduler.assert_called_once()
+
+        # ワンショットモードではタスクトレイは初期化されない
+        assert app.tray_manager is None
+
+        # スケジューラーのcheck_for_updatesが呼び出されたことを確認
+        mock_scheduler.return_value.check_for_updates.assert_called_once_with(
+            force_notify=True
+        )
+
+        # ワンショットモードではstart_monitoringは呼び出されない
+        mock_scheduler.return_value.start_monitoring.assert_not_called()
 
     @patch("src.main.TrayManager")
     @patch("src.main.Scheduler")

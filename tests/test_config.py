@@ -76,19 +76,19 @@ class TestConfigManager:
 
             expected_config = Config()
             assert (
-                config_data["check_interval_minutes"]
+                config_data["general"]["check_interval_minutes"]
                 == expected_config.check_interval_minutes
             )
-            assert config_data["repository_url"] == expected_config.repository_url
+            assert config_data["general"]["repository_url"] == expected_config.repository_url
             assert (
-                config_data["enable_build_action"]
+                config_data["notification"]["click_action"]["enable_build_action"]
                 == expected_config.enable_build_action
             )
             assert (
-                config_data["notification_enabled"]
+                config_data["notification"]["enabled"]
                 == expected_config.notification_enabled
             )
-            assert config_data["log_level"] == expected_config.log_level
+            assert config_data["logging"]["level"] == expected_config.log_level
 
     def test_create_default_config_file_error(self):
         """設定ファイル作成時のエラーハンドリングをテスト"""
@@ -96,7 +96,7 @@ class TestConfigManager:
         invalid_path = Path("/invalid/path/config.toml")
         manager = ConfigManager(invalid_path)
 
-        with pytest.raises(Exception):
+        with pytest.raises(OSError):
             manager.create_default_config()
 
     def test_load_config_file_not_exists(self, caplog):

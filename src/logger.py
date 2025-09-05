@@ -94,9 +94,8 @@ class Logger:
             self._logger.info(f"ログファイル: {log_file}")
             self._logger.debug(f"ログディレクトリ: {log_dir}")
 
-        except Exception as e:
+        except Exception:
             # ログ初期化に失敗した場合のフォールバック
-            print(f"ログシステムの初期化に失敗しました: {e}", file=sys.stderr)
             self._setup_fallback_logger()
 
     def _setup_fallback_logger(self) -> None:

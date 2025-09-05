@@ -2,6 +2,9 @@
 # 要件5.1, 5.2, 5.3, 5.4に対応
 
 [general]
+# 実行モード: "continuous" (常駐) または "oneshot" (ワンショット)
+execution_mode = "oneshot"
+
 # チェック間隔（分）
 check_interval_minutes = 30
 
@@ -19,7 +22,7 @@ enable_build_action = false
 
 [logging]
 # ログレベル (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-level = "INFO"
+level = "DEBUG"
 
 # ログファイルの最大サイズ（MB）
 max_file_size_mb = 10

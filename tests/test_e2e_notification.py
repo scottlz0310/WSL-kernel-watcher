@@ -7,7 +7,7 @@ import pytest
 from src.config import Config
 from src.github_api import GitHubAPIClient
 from src.notification import NotificationManager
-from src.wsl_utils import WSLUtils
+from src.wsl_utils import WSLCommandError, WSLUtils
 
 
 class TestE2ENotification:
@@ -142,7 +142,7 @@ class TestE2ENotification:
         mock_session_get.side_effect = Exception("API Error")
 
         # テスト実行
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="API Error"):
             github_client.get_latest_stable_release()
 
     @patch("subprocess.run")
@@ -156,7 +156,7 @@ class TestE2ENotification:
         )
 
         # テスト実行
-        with pytest.raises(Exception):  # WSLCommandErrorが発生
+        with pytest.raises(WSLCommandError):  # WSLCommandErrorが発生
             wsl_utils.get_current_kernel_version()
 
     @patch("subprocess.run")

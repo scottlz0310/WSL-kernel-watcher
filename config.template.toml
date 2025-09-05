@@ -1,6 +1,11 @@
 # WSL Kernel Watcher 設定ファイルテンプレート
 # このファイルをconfig.tomlとしてコピーして使用してください
 
+[general]
+# 実行モード: "continuous" (常駐) または "oneshot" (ワンショット)
+# デフォルト: "continuous"
+execution_mode = "continuous"
+
 # チェック間隔（分）
 # デフォルト: 30分
 check_interval_minutes = 30
@@ -9,33 +14,53 @@ check_interval_minutes = 30
 # デフォルト: "microsoft/WSL2-Linux-Kernel"
 repository_url = "microsoft/WSL2-Linux-Kernel"
 
-# ビルドアクション有効化
+[notification]
+# 通知機能の有効化
+# Windowsトースト通知を表示するかどうか
+# デフォルト: true
+enabled = true
+
+# 通知クリック時のアクション設定
+[notification.click_action]
+# ビルドアクションの有効化
 # 通知クリック時にWSLでビルドスクリプトを実行するかどうか
 # デフォルト: false
 enable_build_action = false
 
-# 通知機能有効化
-# Windowsトースト通知を表示するかどうか
-# デフォルト: true
-notification_enabled = true
-
+[logging]
 # ログレベル
-# 利用可能な値: "DEBUG", "INFO", "WARNING", "ERROR"
+# 利用可能な値: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
 # デフォルト: "INFO"
-log_level = "INFO"
+level = "INFO"
+
+# ログファイルの最大サイズ（MB）
+max_file_size_mb = 10
+
+# 保持するログファイル数
+backup_count = 5
 
 # 設定例:
+
+# ワンショットモード（CI/CDやスケジュールタスク向け）
+# [general]
+# execution_mode = "oneshot"
+
 # より頻繁にチェックしたい場合
+# [general]
 # check_interval_minutes = 15
 
 # 別のリポジトリを監視したい場合
+# [general]
 # repository_url = "your-username/your-repository"
 
 # デバッグ情報を詳細に出力したい場合
-# log_level = "DEBUG"
+# [logging]
+# level = "DEBUG"
 
 # 通知を無効にしたい場合
-# notification_enabled = false
+# [notification]
+# enabled = false
 
 # ビルドアクションを有効にしたい場合（上級者向け）
+# [notification.click_action]
 # enable_build_action = true

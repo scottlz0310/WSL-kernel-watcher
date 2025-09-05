@@ -4,7 +4,6 @@
 GitHub API、WSL連携、通知システムを統合した更新チェックロジックを実装します。
 """
 
-import logging
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +12,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from .config import Config
 from .github_api import GitHubAPIClient
+from .logger import get_logger
 from .notification import NotificationManager
 from .wsl_utils import WSLUtils
 
@@ -45,7 +45,7 @@ class Scheduler:
         self.github_client = github_client
         self.wsl_utils = wsl_utils
         self.notification_manager = notification_manager
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
 
         # APSchedulerの初期化
         self.scheduler = BackgroundScheduler()
@@ -107,7 +107,6 @@ class Scheduler:
             監視停止に成功した場合True
         """
         if not self._is_monitoring:
-            self.logger.warning("監視は既に停止されています")
             return True
 
         try:
@@ -123,7 +122,7 @@ class Scheduler:
             self.logger.error(f"監視停止中にエラーが発生しました: {e}")
             return False
 
-    def check_for_updates(self) -> bool:
+    def check_for_updates(self, force_notify: bool = False) -> bool:
         """
         カーネル更新をチェック
 
@@ -136,23 +135,33 @@ class Scheduler:
         try:
             self.logger.info("カーネル更新チェックを開始します")
             self._last_check_time = datetime.now()
+            self.logger.debug(f"チェック開始時刻: {self._last_check_time}")
 
             # 統合更新チェックロジックを実行
-            update_info = self._perform_integrated_update_check()
+            self.logger.debug("統合更新チェックを実行中...")
+            update_info = self._perform_integrated_update_check(force_notify)
+            self.logger.debug(f"統合更新チェック結果: {update_info}")
 
             if not update_info:
                 self.logger.warning("統合更新チェックに失敗しました")
                 return False
 
             # 更新チェック結果に基づく処理
-            return self._process_update_check_result(update_info)
+            self.logger.debug("更新チェック結果を処理中...")
+            result = self._process_update_check_result(update_info)
+            self.logger.debug(f"更新チェック処理結果: {result}")
+            return result
 
         except Exception as e:
-            self.logger.error(f"更新チェック中にエラーが発生しました: {e}")
+            self.logger.error(
+                f"更新チェック中にエラーが発生しました: {e}", exc_info=True
+            )
             self._handle_check_error(e)
             return False
 
-    def _perform_integrated_update_check(self) -> Optional[dict]:
+    def _perform_integrated_update_check(
+        self, force_notify: bool = False
+    ) -> Optional[dict]:
         """
         GitHub API、WSL連携、通知を統合した更新チェック機能
 
@@ -199,7 +208,9 @@ class Scheduler:
 
             # Step 5: 通知判定
             if update_info["update_available"]:
-                update_info["should_notify"] = self._should_notify(latest_version)
+                update_info["should_notify"] = force_notify or self._should_notify(
+                    latest_version
+                )
                 self.logger.info(
                     f"新しいカーネルバージョンが利用可能: {current_version} -> {latest_version}"
                 )
@@ -441,6 +452,10 @@ class Scheduler:
         Returns:
             通知を表示すべき場合True
         """
+        self.logger.debug(f"_should_notifyチェック: latest_version={latest_version}")
+        self.logger.debug(f"notification_enabled: {self.config.notification_enabled}")
+        self.logger.debug(f"_last_known_version: {self._last_known_version}")
+
         # 通知が無効の場合は通知しない
         if not self.config.notification_enabled:
             self.logger.debug("通知が無効のため、通知をスキップします")
@@ -451,6 +466,7 @@ class Scheduler:
             self.logger.debug(f"バージョン {latest_version} については既に通知済みです")
             return False
 
+        self.logger.debug("通知を表示します")
         return True
 
     def _handle_check_error(self, error: Exception) -> None:

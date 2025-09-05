@@ -39,6 +39,7 @@ class WSLKernelWatcherApp:
         self.tray_manager: Optional[TrayManager] = None
         self.scheduler: Optional[Scheduler] = None
         self._shutdown_requested = False
+        self._shutdown_in_progress = False
 
         # シグナルハンドラーを設定
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -72,9 +73,10 @@ class WSLKernelWatcherApp:
             if not self._initialize_notification_manager():
                 return False
 
-            # Step 5: タスクトレイ管理の初期化
-            if not self._initialize_tray_manager():
-                return False
+            # Step 5: タスクトレイ管理の初期化（ワンショットモードではスキップ）
+            if self.config.execution_mode != "oneshot":
+                if not self._initialize_tray_manager():
+                    return False
 
             # Step 6: スケジューリングシステムの初期化
             if not self._initialize_scheduler():
@@ -177,8 +179,9 @@ class WSLKernelWatcherApp:
             self.logger.debug("タスクトレイ管理を初期化中...")
             self.tray_manager = TrayManager("WSL Kernel Watcher")
 
-            # 終了コールバックを設定
-            self.tray_manager.set_quit_callback(self.shutdown)
+            # コールバックを設定
+            self.tray_manager.set_quit_callback(self._quit_from_tray)
+            self.tray_manager.set_check_callback(self._manual_check)
 
             # タスクトレイアイコンを作成
             self.tray_manager.create_tray_icon()
@@ -232,7 +235,7 @@ class WSLKernelWatcherApp:
 
     def run(self) -> None:
         """
-        アプリケーションのメインループ
+        アプリケーションのメインループ（常駐モード）
 
         タスクトレイアイコンが実行中の間、アプリケーションを維持します。
         """
@@ -250,11 +253,39 @@ class WSLKernelWatcherApp:
         except Exception as e:
             self.logger.error(f"メインループ中にエラーが発生しました: {e}")
 
+    def run_oneshot(self) -> None:
+        """
+        ワンショットモードで実行
+
+        チェックを一度実行して即座に終了します。
+        """
+        try:
+            self.logger.info("ワンショットモードでカーネルチェックを実行します")
+
+            if self.scheduler:
+                # ワンショットチェックを実行（常に通知表示）
+                result = self.scheduler.check_for_updates(force_notify=True)
+                if result:
+                    self.logger.info("カーネルチェックが正常に完了しました")
+                else:
+                    self.logger.warning("カーネルチェックに失敗しました")
+            else:
+                self.logger.error("スケジューラーが初期化されていません")
+
+            self.logger.info("ワンショットモード完了、アプリケーションを終了します")
+
+        except Exception as e:
+            self.logger.error(f"ワンショットモード実行中にエラーが発生しました: {e}")
+
     def shutdown(self) -> None:
         """
         アプリケーションの終了処理
         """
+        if self._shutdown_in_progress:
+            return
+
         try:
+            self._shutdown_in_progress = True
             self.logger.info("アプリケーションの終了処理を開始します")
             self._shutdown_requested = True
 
@@ -265,13 +296,15 @@ class WSLKernelWatcherApp:
 
             # タスクトレイアイコンを停止
             if self.tray_manager:
-                self.tray_manager.quit_application()
+                self.tray_manager.stop_icon()
                 self.logger.debug("タスクトレイアイコンを停止しました")
 
             self.logger.info("アプリケーションの終了処理が完了しました")
 
         except Exception as e:
             self.logger.error(f"終了処理中にエラーが発生しました: {e}")
+        finally:
+            self._shutdown_in_progress = False
 
     def _signal_handler(self, signum: int, frame) -> None:
         """
@@ -281,9 +314,40 @@ class WSLKernelWatcherApp:
             signum: シグナル番号
             frame: フレームオブジェクト
         """
+        if self._shutdown_in_progress:
+            return
+
         signal_name = signal.Signals(signum).name
         self.logger.info(f"シグナル {signal_name} を受信しました")
         self.shutdown()
+
+    def _quit_from_tray(self) -> None:
+        """
+        タスクトレイからの終了処理
+        """
+        if self._shutdown_in_progress:
+            return
+
+        self.logger.info("タスクトレイから終了要求を受信しました")
+        self._shutdown_requested = True
+
+    def _manual_check(self) -> None:
+        """
+        手動チェック処理
+        """
+        try:
+            self.logger.info("手動チェックを実行します")
+            self.logger.debug(f"schedulerオブジェクト: {self.scheduler}")
+            if self.scheduler:
+                self.logger.debug("scheduler.check_for_updates()を呼び出し中...")
+                result = self.scheduler.check_for_updates(force_notify=True)
+                self.logger.debug(f"check_for_updates結果: {result}")
+            else:
+                self.logger.warning("スケジューラーが初期化されていません")
+        except Exception as e:
+            self.logger.error(
+                f"手動チェック中にエラーが発生しました: {e}", exc_info=True
+            )
 
 
 def main() -> NoReturn:
@@ -307,13 +371,21 @@ def main() -> NoReturn:
             logger.error("アプリケーションの初期化に失敗しました")
             sys.exit(1)
 
-        # アプリケーションを開始
-        if not app.start():
-            logger.error("アプリケーションの開始に失敗しました")
-            sys.exit(1)
+        # ワンショットモードの場合はタスクトレイやスケジューラーを開始しない
+        if app.config.execution_mode != "oneshot":
+            # アプリケーションを開始
+            if not app.start():
+                logger.error("アプリケーションの開始に失敗しました")
+                sys.exit(1)
 
-        # メインループを実行
-        app.run()
+        # 実行モードに応じて処理を分岐
+        if app.config.execution_mode == "oneshot":
+            logger.info("ワンショットモードで実行します")
+            app.run_oneshot()
+        else:
+            logger.info("常駐モードで実行します")
+            # メインループを実行
+            app.run()
 
     except KeyboardInterrupt:
         logger.info("ユーザーによる中断を検出しました")
@@ -321,9 +393,12 @@ def main() -> NoReturn:
         logger.error(f"予期しないエラーが発生しました: {e}", exc_info=True)
         sys.exit(1)
     finally:
-        # 終了処理
+        # 終了処理（ワンショットモードではシンプルな終了）
         if app:
-            app.shutdown()
+            if app.config.execution_mode == "oneshot":
+                logger.info("ワンショットモード終了")
+            else:
+                app.shutdown()
         logger.info("アプリケーションを終了しました")
 
     sys.exit(0)

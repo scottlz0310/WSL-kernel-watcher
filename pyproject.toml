@@ -16,7 +16,7 @@ include = [
 
 [project]
 name = "wsl-kernel-watcher"
-version = "1.0.0"
+version = "1.1.0"
 description = "WSL2カーネルの新しい安定版リリースを監視し、Windowsトースト通知でユーザーに知らせる常駐型アプリケーション"
 authors = [
     {name = "WSL Kernel Watcher Team", email = "wsl-kernel-watcher@example.com"}
@@ -84,6 +84,12 @@ Repository = "https://github.com/scottlz0310/WSL-kernel-watcher"
 Issues = "https://github.com/scottlz0310/WSL-kernel-watcher/issues"
 Documentation = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/README.md"
 Changelog = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "types-requests>=2.32.4.20250809",
+    "types-toml>=0.10.8.20240310",
+]
 
 
 

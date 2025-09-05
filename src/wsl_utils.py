@@ -2,7 +2,7 @@
 
 import re
 import subprocess
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 from .logger import get_logger
 
@@ -43,27 +43,27 @@ class WSLUtils:
             logger.info(f"現在のWSLカーネルバージョン: {kernel_version}")
             return kernel_version
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
             error_msg = f"WSLコマンドがタイムアウトしました（{self.timeout}秒）"
             logger.error(error_msg)
-            raise WSLCommandError(error_msg)
+            raise WSLCommandError(error_msg) from e
 
         except subprocess.CalledProcessError as e:
             error_msg = f"WSLコマンドの実行に失敗しました: {e.stderr}"
             logger.error(error_msg)
-            raise WSLCommandError(error_msg)
+            raise WSLCommandError(error_msg) from e
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             error_msg = (
                 "WSLが見つかりません。WSLがインストールされているか確認してください"
             )
             logger.error(error_msg)
-            raise WSLCommandError(error_msg)
+            raise WSLCommandError(error_msg) from e
 
         except Exception as e:
             error_msg = f"予期しないエラーが発生しました: {str(e)}"
             logger.error(error_msg)
-            raise WSLCommandError(error_msg)
+            raise WSLCommandError(error_msg) from e
 
     def compare_versions(self, current: str, latest: str) -> int:
         """セマンティックバージョニングに基づいてバージョンを比較する.
@@ -104,9 +104,9 @@ class WSLUtils:
         except Exception as e:
             error_msg = f"バージョン比較に失敗しました: {str(e)}"
             logger.error(error_msg)
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
-    def _parse_version(self, version_string: str) -> Tuple[int, ...]:
+    def _parse_version(self, version_string: str) -> tuple[int, ...]:
         """バージョン文字列を解析して数値のタプルに変換する.
 
         Args:
@@ -135,7 +135,7 @@ class WSLUtils:
             if "invalid literal for int()" in str(e):
                 raise ValueError(
                     f"バージョン文字列に無効な文字が含まれています: {version_string}"
-                )
+                ) from e
             raise
 
     def execute_build_script(

@@ -5,7 +5,6 @@ Windows通知システムの実装
 通知クリック時のコールバック処理を管理します。
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -21,6 +20,7 @@ except ImportError:
     ToastDisplayImage = None  # type: ignore
 
 from .config import Config
+from .logger import get_logger
 from .wsl_utils import WSLUtils
 
 
@@ -54,7 +54,7 @@ class NotificationManager:
         """
         self.config = config
         self.wsl_utils = wsl_utils
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger()
         self._click_callback: Optional[Callable[[str, str], None]] = None
         self.toaster: Optional[Any] = None  # WindowsToasterまたはNone
 
@@ -95,6 +95,14 @@ class NotificationManager:
         Returns:
             通知表示に成功した場合True
         """
+        self.logger.debug(
+            f"show_update_notification呼び出し: {current_version} -> {latest_version}"
+        )
+        self.logger.debug(
+            f"is_notification_supported: {self.is_notification_supported()}"
+        )
+        self.logger.debug(f"toaster: {self.toaster}")
+
         if not self.is_notification_supported():
             self.logger.warning("通知機能が無効または利用できません")
             return False

@@ -183,6 +183,7 @@ log_level = "INFO"
 
 | 項目 | デフォルト値 | 説明 |
 |------|-------------|------|
+| `execution_mode` | "continuous" | 実行モード（"continuous": 常駐, "oneshot": ワンショット） |
 | `check_interval_minutes` | 30 | GitHub APIをチェックする間隔（分） |
 | `repository_url` | "microsoft/WSL2-Linux-Kernel" | 監視対象のGitHubリポジトリ |
 | `enable_build_action` | false | 通知クリック時にビルドスクリプトを実行するか |
@@ -194,22 +195,28 @@ log_level = "INFO"
 ### uvでインストールした場合
 
 ```powershell
-# プロジェクトディレクトリで実行
+# プロジェクトディレクトリで実行（常駐モード）
 cd wsl-kernel-watcher
 uv run wsl-kernel-watcher
 
 # または
 uv run python -m src.main
+
+# ワンショットモード（config.tomlでexecution_mode = "oneshot"に設定）
+uv run wsl-kernel-watcher  # 一度だけチェックして終了
 ```
 
 ### pipxでインストールした場合
 
 ```powershell
-# どこからでも実行可能
+# どこからでも実行可能（常駐モード）
 wsl-kernel-watcher
 
 # または短縮形
 wkw
+
+# ワンショットモード（config.tomlでexecution_mode = "oneshot"に設定）
+wsl-kernel-watcher  # CI/CDやスケジュールタスクでの利用に最適
 ```
 
 ### バックグラウンド実行

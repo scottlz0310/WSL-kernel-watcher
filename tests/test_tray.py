@@ -321,8 +321,8 @@ class TestTrayManager:
         self.tray_manager._on_check_now_clicked(mock_icon, mock_item)
         # エラーが発生しないことを確認
 
-    @patch.object(TrayManager, "quit_application")
-    def test_on_quit_clicked(self, mock_quit: Mock) -> None:
+    @patch.object(TrayManager, "stop_icon")
+    def test_on_quit_clicked(self, mock_stop: Mock) -> None:
         """
         終了メニュークリックをテスト
 
@@ -334,8 +334,8 @@ class TestTrayManager:
         # メニューをクリック
         self.tray_manager._on_quit_clicked(mock_icon, mock_item)
 
-        # quit_applicationが呼び出されたことを確認
-        mock_quit.assert_called_once()
+        # stop_iconが呼び出されたことを確認
+        mock_stop.assert_called_once()
 
 
 class TestTrayManagerIntegration:

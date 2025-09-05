@@ -34,6 +34,7 @@ class TrayManager:
         self._has_update = False
         self._quit_callback: Optional[Callable[[], None]] = None
         self._settings_callback: Optional[Callable[[], None]] = None
+        self._check_callback: Optional[Callable[[], None]] = None
         self._running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -120,6 +121,17 @@ class TrayManager:
             if self._quit_callback:
                 self._quit_callback()
 
+            self.stop_icon()
+            self.logger.info("アプリケーション終了処理完了")
+
+        except Exception as e:
+            self.logger.error(f"アプリケーション終了処理でエラーが発生しました: {e}")
+
+    def stop_icon(self) -> None:
+        """
+        アイコンを停止
+        """
+        try:
             # アイコンを停止
             if self._icon is not None:
                 self._icon.stop()
@@ -130,10 +142,8 @@ class TrayManager:
             if self._thread and self._thread.is_alive():
                 self._thread.join(timeout=5.0)
 
-            self.logger.info("アプリケーション終了処理完了")
-
         except Exception as e:
-            self.logger.error(f"アプリケーション終了処理でエラーが発生しました: {e}")
+            self.logger.error(f"アイコン停止処理でエラーが発生しました: {e}")
 
     def set_quit_callback(self, callback: Callable[[], None]) -> None:
         """
@@ -154,6 +164,16 @@ class TrayManager:
         """
         self._settings_callback = callback
         self.logger.debug("設定コールバックを設定しました")
+
+    def set_check_callback(self, callback: Callable[[], None]) -> None:
+        """
+        今すぐチェック時のコールバック関数を設定
+
+        Args:
+            callback: 今すぐチェック時に呼び出される関数
+        """
+        self._check_callback = callback
+        self.logger.debug("チェックコールバックを設定しました")
 
     def is_running(self) -> bool:
         """
@@ -244,11 +264,22 @@ class TrayManager:
         今すぐチェックメニューがクリックされた時の処理
         """
         self.logger.info("今すぐチェックメニューがクリックされました")
-        # 実際のチェック処理は他のコンポーネントで実装される
+        # チェックコールバックを実行
+        if self._check_callback:
+            try:
+                self._check_callback()
+            except Exception as e:
+                self.logger.error(
+                    f"チェックコールバックの実行でエラーが発生しました: {e}"
+                )
 
     def _on_quit_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         """
         終了メニューがクリックされた時の処理
         """
         self.logger.info("終了メニューがクリックされました")
-        self.quit_application()
+        # コールバックを呼び出してアプリケーション全体の終了を開始
+        if self._quit_callback:
+            self._quit_callback()
+        # アイコンだけを停止
+        self.stop_icon()
