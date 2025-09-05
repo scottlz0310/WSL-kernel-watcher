@@ -10,7 +10,7 @@ idna==3.10
     # via requests
 packaging==24.2
     # via wsl-kernel-watcher (pyproject.toml)
-pillow==10.4.0
+pillow==11.3.0
     # via
     #   wsl-kernel-watcher (pyproject.toml)
     #   pystray

@@ -72,7 +72,7 @@ pathspec==0.12.1
     # via
     #   black
     #   mypy
-pillow==10.4.0
+pillow==11.3.0
     # via
     #   wsl-kernel-watcher (pyproject.toml)
     #   pystray
