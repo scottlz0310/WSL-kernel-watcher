@@ -1487,10 +1487,6 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
     { name = "twine" },
-]
-
-[package.dev-dependencies]
-dev = [
     { name = "types-requests" },
     { name = "types-toml" },
 ]
@@ -1513,16 +1509,12 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "toml", specifier = ">=0.10.0,<1.0.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4.20250809" },
+    { name = "types-toml", marker = "extra == 'dev'", specifier = ">=0.10.8.20240310" },
     { name = "urllib3", specifier = ">=2.0.0,<3.0.0" },
     { name = "windows-toasts", specifier = ">=1.0.0,<2.0.0" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "types-requests", specifier = ">=2.32.4.20250809" },
-    { name = "types-toml", specifier = ">=0.10.8.20240310" },
-]
 
 [[package]]
 name = "zipp"
