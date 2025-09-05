@@ -79,7 +79,10 @@ class TestConfigManager:
                 config_data["general"]["check_interval_minutes"]
                 == expected_config.check_interval_minutes
             )
-            assert config_data["general"]["repository_url"] == expected_config.repository_url
+            assert (
+                config_data["general"]["repository_url"]
+                == expected_config.repository_url
+            )
             assert (
                 config_data["notification"]["click_action"]["enable_build_action"]
                 == expected_config.enable_build_action
