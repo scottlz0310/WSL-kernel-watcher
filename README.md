@@ -1,5 +1,10 @@
 # WSLカーネル安定版リリース監視ツール
 
+[![CI](https://github.com/scottlz0310/WSL-kernel-watcher/workflows/CI/badge.svg)](https://github.com/scottlz0310/WSL-kernel-watcher/actions)
+[![codecov](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 Microsoft公式のWSL2 Linuxカーネルリポジトリ（microsoft/WSL2-Linux-Kernel）を監視し、新しい安定版リリースが公開された際にWindowsトースト通知でユーザーに知らせる常駐型アプリケーションです。
 
 ## 機能
@@ -176,14 +181,11 @@ MIT License
 
 ## 貢献
 
-プルリクエストやイシューの報告を歓迎します。開発に参加する前に、開発環境のセットアップを行ってください。
+プルリクエストやイシューの報告を歓迎します。詳細は[CONTRIBUTING.md](CONTRIBUTING.md)をご覧ください。
 
-## 今後の実装予定
+## リンク
 
-- [ ] 設定管理システム
-- [ ] GitHub APIクライアント
-- [ ] WSL連携機能
-- [ ] 通知システム
-- [ ] タスクトレイ管理
-- [ ] スケジューリングシステム
-- [ ] パッケージング対応
+- [Changelog](CHANGELOG.md) - 変更履歴
+- [Contributing](CONTRIBUTING.md) - 開発ガイド
+- [Security Policy](SECURITY.md) - セキュリティポリシー
+- [License](LICENSE) - MITライセンス
