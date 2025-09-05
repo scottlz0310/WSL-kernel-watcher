@@ -56,7 +56,7 @@ dependencies = [
     "pillow>=10.0.0,<12.0.0",
     "windows-toasts>=1.0.0,<2.0.0",
     "apscheduler>=3.10.0,<4.0.0",
-    "packaging>=23.0,<25.0",
+    "packaging>=23.0,<26.0",
     "toml>=0.10.0,<1.0.0",
 ]
 
