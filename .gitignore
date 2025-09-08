@@ -70,3 +70,17 @@ Thumbs.db
 logs/
 *.log
 config_local.toml
+
+# Auto-generated entries
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+
+# Auto-generated entries
+uv.lock
+
+# Auto-generated entries
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
