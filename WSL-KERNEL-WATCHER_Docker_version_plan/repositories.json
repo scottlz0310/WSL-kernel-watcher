@@ -1,0 +1,7 @@
+{
+  "repositories": [
+    "microsoft/WSL2-Linux-Kernel",
+    "microsoft/terminal",
+    "microsoft/PowerToys"
+  ]
+}
