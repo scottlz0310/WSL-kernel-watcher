@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-01-10
+
+### Added
+- 🔧 **Pre-commitフック強化**: 開発品質向上のための包括的なフック設定
+  - ruff check --fix: 自動コード修正
+  - ruff format: コードフォーマット統一
+  - mypy: 型チェック強化
+  - pytest: テスト実行の自動化
+- 🏗️ **uv対応**: 最新のPythonパッケージマネージャーに完全対応
+  - dependency-groupsによる開発依存関係管理
+  - 高速な依存関係解決とインストール
+  - CI/CD環境での最適化
+- 📦 **自動インストールスクリプト**: install.ps1による簡単セットアップ
+  - uv/pipx の自動検出とインストール
+  - 仮想環境の自動作成
+  - config.toml の自動生成
+  - カスタムインストールパス対応
+
+### Changed
+- 📦 **依存関係管理の現代化**
+  - requirements.txtからpyproject.toml + dependency-groupsに移行
+  - 開発用依存関係の明確な分離
+- 🔍 **コード品質チェックの強化**
+  - MyPy型チェックの厳格化
+  - Ruffによる包括的なリント設定
+  - pytest-timeoutによるハングアップ対策
+- 🚀 **CI/CD最適化**
+  - GitHub ActionsでのWindows環境最適化
+  - プラグイン競合問題の解決
+  - ローカル・CI環境の設定統一
+
+### Fixed
+- 🐛 **Windows環境での問題解決**
+  - pytest-timeoutプラグインの重複登録エラー修正
+  - Windows-Toastsインポートエラー処理改善
+  - パス処理のWindows互換性向上
+- 🔧 **設定ファイルの整合性**
+  - Pre-commit設定とCI設定の完全同期
+  - プラグイン明示指定の最適化
+
+### Technical
+- Python 3.9-3.13 対応継続
+- uv 0.8.22+ 対応
+- 新しい開発依存関係: pytest-timeout, pre-commit
+- Windows Server 2025 CI環境対応
+
 ## [1.1.0] - 2025-01-05
 
 ### Added
@@ -49,5 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - レート制限対応
 - リトライ機能
 
+[1.2.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/releases/tag/v1.0.0
