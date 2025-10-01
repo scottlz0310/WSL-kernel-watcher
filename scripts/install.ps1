@@ -9,6 +9,8 @@ param(
     [switch]$Help = $false
 )
 
+$script:LastInstallDetails = $null
+
 function Show-Help {
     Write-Host "WSL Kernel Watcher Install Script" -ForegroundColor Green
     Write-Host ""
@@ -17,13 +19,15 @@ function Show-Help {
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -InstallMethod <method>  Install method ('uv' or 'pipx')"
-    Write-Host "  -InstallPath <path>      Install path (uv only)"
+    Write-Host "  -InstallPath <path>      Target directory for uv installs"
+    Write-Host "                               (project files are copied when set)"
     Write-Host "  -Dev                     Setup as development environment"
     Write-Host "  -Help                    Show this help"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\install.ps1                    # Install using uv"
     Write-Host "  .\install.ps1 -InstallMethod pipx # Install using pipx"
+    Write-Host "  .\install.ps1 -InstallPath C:\Apps\WSLKW # Install to custom folder (uv)"
     Write-Host "  .\install.ps1 -Dev               # Setup development environment"
 }
 
@@ -35,6 +39,104 @@ function Test-Command {
     }
     catch {
         return $false
+    }
+}
+
+function Copy-ProjectContent {
+    param(
+        [string]$Source,
+        [string]$Destination,
+        [string[]]$ExcludeDirectories = @(),
+        [string[]]$ExcludeFiles = @()
+    )
+
+    if (-not (Test-Path -LiteralPath $Destination)) {
+        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    }
+
+    Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
+        if ($_.PSIsContainer) {
+            if ($ExcludeDirectories -contains $_.Name) {
+                return
+            }
+            $targetDir = Join-Path $Destination $_.Name
+            Copy-ProjectContent -Source $_.FullName -Destination $targetDir -ExcludeDirectories $ExcludeDirectories -ExcludeFiles $ExcludeFiles
+        }
+        else {
+            if ($ExcludeFiles -contains $_.Name) {
+                return
+            }
+            Copy-Item -LiteralPath $_.FullName -Destination $Destination -Force
+        }
+    }
+}
+
+function Resolve-InstallRoot {
+    param(
+        [string]$RequestedPath,
+        [string]$ProjectRoot
+    )
+
+    $projectRootFull = [System.IO.Path]::GetFullPath($ProjectRoot)
+
+    if ([string]::IsNullOrWhiteSpace($RequestedPath)) {
+        return [pscustomobject]@{
+            Path = $projectRootFull
+            Copied = $false
+        }
+    }
+
+    $expandedPath = [System.Environment]::ExpandEnvironmentVariables($RequestedPath)
+    if ($expandedPath.StartsWith('~')) {
+        if ($expandedPath.Length -eq 1) {
+            $expandedPath = $HOME
+        }
+        elseif ($expandedPath[1] -eq '/' -or $expandedPath[1] -eq '\') {
+            $expandedPath = Join-Path $HOME $expandedPath.Substring(2)
+        }
+        else {
+            $expandedPath = $expandedPath.Replace('~', $HOME)
+        }
+    }
+
+    if (-not [System.IO.Path]::IsPathRooted($expandedPath)) {
+        $expandedPath = Join-Path (Get-Location).Path $expandedPath
+    }
+
+    $expandedPath = [System.IO.Path]::GetFullPath($expandedPath)
+
+    try {
+        if (Test-Path -LiteralPath $expandedPath) {
+            $item = Get-Item -LiteralPath $expandedPath
+            if (-not $item.PSIsContainer) {
+                throw "InstallPath must be a directory."
+            }
+            $targetFull = $item.FullName
+        }
+        else {
+            $targetFull = (New-Item -ItemType Directory -Path $expandedPath -Force).FullName
+        }
+    }
+    catch {
+        throw "Failed to prepare install path '$RequestedPath': $($_.Exception.Message)"
+    }
+
+    $targetFull = [System.IO.Path]::GetFullPath($targetFull)
+
+    $excludeDirs = @('.git', '.venv', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'htmlcov', 'dist', '.amazonq', '.kiro', [System.IO.Path]::GetFileName($targetFull))
+    $excludeFiles = @('.coverage', 'config.toml')
+
+    $copied = $false
+
+    if (-not (Test-Path -LiteralPath (Join-Path $targetFull 'pyproject.toml'))) {
+        Write-Host "Copying project files to $targetFull..." -ForegroundColor Yellow
+        Copy-ProjectContent -Source $projectRootFull -Destination $targetFull -ExcludeDirectories $excludeDirs -ExcludeFiles $excludeFiles
+        $copied = $true
+    }
+
+    return [pscustomobject]@{
+        Path = $targetFull
+        Copied = $copied
     }
 }
 
@@ -71,58 +173,82 @@ function Install-Pipx {
 
 function Install-WithUV {
     param([string]$Path, [bool]$IsDev)
-    
+
     Write-Host "Installing WSL Kernel Watcher using uv..." -ForegroundColor Yellow
-    
-    if ($Path -eq "") {
-        $Path = Get-Location
-    }
-    
+
+    $script:LastInstallDetails = $null
+
+    $projectRoot = Split-Path -Parent $PSScriptRoot
+
     try {
-        Set-Location $Path
-        
-        # Create virtual environment
+        $resolved = Resolve-InstallRoot -RequestedPath $Path -ProjectRoot $projectRoot
+    }
+    catch {
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        return $false
+    }
+
+    $installRoot = $resolved.Path
+
+    if ($resolved.Copied) {
+        Write-Host "Project files copied to $installRoot." -ForegroundColor Green
+    }
+    else {
+        Write-Host "Using project files from $installRoot." -ForegroundColor Green
+    }
+
+    Push-Location $installRoot
+    try {
         uv venv
-        
+
         if ($IsDev) {
-            # Install development dependencies
             uv sync --extra dev
-            
-            # Setup pre-commit hooks
             uv run pre-commit install
-            
+
             Write-Host "Development environment setup completed." -ForegroundColor Green
             Write-Host "You can run the application with:" -ForegroundColor Cyan
             Write-Host "  uv run wsl-kernel-watcher" -ForegroundColor White
         }
         else {
-            # Install production dependencies
             uv sync
-            
+
             Write-Host "Installation completed." -ForegroundColor Green
             Write-Host "You can run the application with:" -ForegroundColor Cyan
             Write-Host "  uv run wsl-kernel-watcher" -ForegroundColor White
         }
-        
-        # Copy configuration file
+
         if (-not (Test-Path "config.toml")) {
             if (Test-Path "config.template.toml") {
                 Copy-Item "config.template.toml" "config.toml"
                 Write-Host "Created configuration file config.toml." -ForegroundColor Green
             }
         }
-        
+
+        $script:LastInstallDetails = [pscustomobject]@{
+            InstallMethod = "uv"
+            InstallRoot = $installRoot
+            DevMode = $IsDev
+            ProjectCopied = $resolved.Copied
+        }
+
         return $true
     }
     catch {
+        $script:LastInstallDetails = $null
         Write-Host "Installation failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
+    finally {
+        Pop-Location
+    }
 }
+
 
 function Install-WithPipx {
     Write-Host "Installing WSL Kernel Watcher using pipx..." -ForegroundColor Yellow
-    
+
+    $script:LastInstallDetails = $null
+
     try {
         # Install from current directory
         pipx install .
@@ -135,10 +261,17 @@ function Install-WithPipx {
         $configPath = "$env:APPDATA\wsl-kernel-watcher"
         Write-Host "Configuration file will be created at:" -ForegroundColor Cyan
         Write-Host "  $configPath\config.toml" -ForegroundColor White
-        
+
+        $script:LastInstallDetails = [pscustomobject]@{
+            InstallMethod = "pipx"
+            BinaryName = "wsl-kernel-watcher"
+            ConfigPath = Join-Path $configPath "config.toml"
+        }
+
         return $true
     }
     catch {
+        $script:LastInstallDetails = $null
         Write-Host "Installation failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
@@ -233,10 +366,33 @@ elseif ($InstallMethod -eq "pipx") {
 if ($success) {
     Write-Host ""
     Write-Host "Installation completed successfully!" -ForegroundColor Green
+
+    if ($script:LastInstallDetails) {
+        switch ($script:LastInstallDetails.InstallMethod) {
+            'uv' {
+                $configPath = Join-Path $script:LastInstallDetails.InstallRoot 'config.toml'
+                Write-Host "Install root: $($script:LastInstallDetails.InstallRoot)" -ForegroundColor Cyan
+                Write-Host "Configuration file: $configPath" -ForegroundColor Cyan
+            }
+            'pipx' {
+                Write-Host "Executable: wsl-kernel-watcher (managed by pipx)" -ForegroundColor Cyan
+                if ($script:LastInstallDetails.ConfigPath) {
+                    Write-Host "Configuration file: $($script:LastInstallDetails.ConfigPath)" -ForegroundColor Cyan
+                }
+            }
+        }
+    }
+
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "1. Edit the configuration file (config.toml) as needed" -ForegroundColor White
-    Write-Host "2. Run the application" -ForegroundColor White
+    if ($script:LastInstallDetails -and $script:LastInstallDetails.InstallMethod -eq 'pipx') {
+        Write-Host "1. Edit the configuration file listed above as needed" -ForegroundColor White
+        Write-Host "2. Run the application with: wsl-kernel-watcher" -ForegroundColor White
+    }
+    else {
+        Write-Host "1. Edit the configuration file listed above as needed" -ForegroundColor White
+        Write-Host "2. Run the application with: uv run wsl-kernel-watcher" -ForegroundColor White
+    }
     Write-Host ""
     Write-Host "For support, please refer to README.md." -ForegroundColor Cyan
 }
@@ -246,3 +402,6 @@ else {
     Write-Host "Please check the error messages and try again." -ForegroundColor Red
     exit 1
 }
+
+
+

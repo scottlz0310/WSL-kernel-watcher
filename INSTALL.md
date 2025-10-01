@@ -54,6 +54,33 @@ cd wsl-kernel-watcher
 .\scripts\install.ps1
 ```
 
+#### インストールスクリプトの動作
+
+PowerShell スクリプトでは次の処理を自動化します。
+
+1. Python / WSL / uv または pipx の存在を確認し、必要に応じて導入を案内します。
+2. `-InstallMethod uv` の場合は、プロジェクト一式を指定フォルダにコピーして `.venv` を作成し、`uv sync` で依存関係を解決します。
+3. `-Dev` を指定すると開発用依存関係と pre-commit フックを追加でセットアップします。
+4. `config.toml` が存在しない場合は `config.template.toml` から自動生成します。
+5. 完了後に実行方法と設定ファイルのパスを表示します。
+
+#### インストール先フォルダを指定する (uv)
+
+`-InstallPath` オプションを使うと、リポジトリとは別のディレクトリに本番用のコピーを展開できます。
+
+```powershell
+.\scripts\install.ps1 -InstallMethod uv -InstallPath "C:\Apps\WSLKernelWatcher"
+```
+
+- フォルダが存在しない場合は自動作成されます。
+- 指定したディレクトリにプロジェクトファイルと `.venv` が配置され、`config.toml` もそこに生成されます。
+- パスには `~` や `%PROGRAMDATA%` などの環境変数を利用できます。
+- 以降は `uv run wsl-kernel-watcher` でインストール先から直接起動できます。
+
+#### pipx でインストールした場合
+
+`pipx` を選択した場合はユーザーごとの pipx 管理ディレクトリにインストールされ、設定ファイルは `%APPDATA%\wsl-kernel-watcher\config.toml` に作成されます。
+
 #### スクリプトオプション
 
 ```powershell

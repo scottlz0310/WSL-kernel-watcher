@@ -26,6 +26,20 @@ Microsoft公式のWSL2 Linuxカーネルリポジトリ（microsoft/WSL2-Linux-K
 
 ## インストール
 
+### 方法0: install.ps1 を使う (Windows)
+
+```powershell
+.\scripts\install.ps1
+```
+
+PowerShell スクリプトは uv / pipx の確認、`.venv` の作成、`config.toml` の生成まで自動化します。`-InstallPath` を指定すると、本番用に別フォルダへ展開できます。
+
+```powershell
+.\scripts\install.ps1 -InstallMethod uv -InstallPath "C:\Apps\WSLKernelWatcher"
+```
+
+`pipx` を選んだ場合の設定ファイルは `%APPDATA%\wsl-kernel-watcher\config.toml` に作成されます。
+
 ### 方法1: uvを使用したインストール（推奨）
 
 #### 前提条件
