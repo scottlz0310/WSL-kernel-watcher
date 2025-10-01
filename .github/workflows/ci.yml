@@ -30,7 +30,7 @@ jobs:
         uv run ruff check --fix
         uv run ruff format
         uv run mypy src/
-        uv run python -m pytest -p pytest_cov -p pytest_timeout --cov=src --cov-report=xml
+        uv run python -m pytest -p pytest_cov --cov=src --cov-report=xml
 
     - name: Upload coverage
       uses: codecov/codecov-action@v5
