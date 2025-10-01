@@ -5,9 +5,10 @@ WSLカーネル監視ツールの設定ファイル（config.toml）の読み込
 """
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional, TextIO, cast
+from typing import Any, Optional, TextIO, cast
 
 import toml
 
@@ -115,7 +116,9 @@ class ConfigManager:
             logger.error(f"設定ファイルの作成に失敗しました: {e}")
             raise
 
-    def _write_toml_config(self, stream: TextIO, config_dict: Mapping[str, Any]) -> None:
+    def _write_toml_config(
+        self, stream: TextIO, config_dict: Mapping[str, Any]
+    ) -> None:
         """TOML形式で設定を書き込む"""
         stream.write("# WSL Kernel Watcher 設定ファイル\n")
         stream.write("# このファイルはアプリケーションの動作を制御します\n\n")
@@ -129,7 +132,9 @@ class ConfigManager:
         stream.write(f'repository_url = "{config_dict["repository_url"]}"\n\n')
 
         stream.write("[notification]\n")
-        stream.write(f"enabled = {str(config_dict['notification_enabled']).lower()}\n\n")
+        stream.write(
+            f"enabled = {str(config_dict['notification_enabled']).lower()}\n\n"
+        )
 
         stream.write("[notification.click_action]\n")
         stream.write(
@@ -255,4 +260,3 @@ class ConfigManager:
                 "level", config_data.get("log_level", Config().log_level)
             ),
         )
-

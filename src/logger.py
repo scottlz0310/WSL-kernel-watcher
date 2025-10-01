@@ -315,6 +315,7 @@ class Logger:
 
         return stats
 
+
 def get_logger() -> logging.Logger:
     """グローバルロガーを取得するヘルパー関数"""
     logger_instance = Logger()
@@ -337,5 +338,3 @@ def get_log_file_path() -> Optional[Path]:
     """ログファイルパスを取得するヘルパー関数"""
     logger_instance = Logger()
     return logger_instance.get_log_file_path()
-
-

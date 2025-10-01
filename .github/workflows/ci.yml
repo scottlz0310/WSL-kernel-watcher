@@ -18,8 +18,6 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
-      with:
-        version: "latest"
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -27,18 +25,14 @@ jobs:
     - name: Install dependencies
       run: uv sync --group dev
 
-    - name: Lint with ruff
+    - name: Run pre-commit checks
       run: |
-        uv run ruff check .
-        uv run ruff format --check .
+        uv run ruff check --fix
+        uv run ruff format
+        uv run mypy src/
+        uv run pytest --cov=src --cov-report=xml
 
-    - name: Type check with mypy
-      run: uv run mypy src/
-
-    - name: Test with pytest
-      run: uv run pytest --cov=src --cov-report=xml --cov-report=term
-
-    - name: Upload coverage to Codecov
+    - name: Upload coverage
       uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
@@ -51,20 +45,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
-
     - name: Install uv
       uses: astral-sh/setup-uv@v6
-
     - name: Set up Python
       run: uv python install 3.11
-
     - name: Install dependencies
       run: uv sync
-
     - name: Build package
       run: uv build
-
-    - name: Upload build artifacts
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: dist

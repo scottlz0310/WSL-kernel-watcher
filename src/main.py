@@ -9,8 +9,8 @@ WSLカーネル安定版リリース監視ツール - メインエントリー�
 import signal
 import sys
 import time
-from types import FrameType
 from pathlib import Path
+from types import FrameType
 from typing import NoReturn, Optional
 
 from .config import Config, ConfigManager
@@ -153,7 +153,6 @@ class WSLKernelWatcherApp:
 
             self.github_client = GitHubAPIClient(config.repository_url)
 
-
             # GitHub APIの基本チェック
             latest_release = self.github_client.get_latest_stable_release()
             if latest_release:
@@ -176,7 +175,9 @@ class WSLKernelWatcherApp:
             config = self.config
             wsl_utils = self.wsl_utils
             if config is None or wsl_utils is None:
-                self.logger.error("通知システムの初期化に必要な依存関係が不足しています")
+                self.logger.error(
+                    "通知システムの初期化に必要な依存関係が不足しています"
+                )
                 return False
 
             self.notification_manager = NotificationManager(config, wsl_utils)
@@ -223,7 +224,9 @@ class WSLKernelWatcherApp:
             wsl_utils = self.wsl_utils
             notification_manager = self.notification_manager
             if None in (config, github_client, wsl_utils, notification_manager):
-                self.logger.error("スケジューラーの初期化に必要な依存関係が不足しています")
+                self.logger.error(
+                    "スケジューラーの初期化に必要な依存関係が不足しています"
+                )
                 return False
 
             assert config is not None
@@ -454,9 +457,3 @@ def main() -> NoReturn:
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
