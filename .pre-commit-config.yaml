@@ -27,7 +27,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: uv run pytest
+        entry: uv run python -m pytest -p pytest_cov -p pytest_timeout
         language: system
         pass_filenames: false
         always_run: true

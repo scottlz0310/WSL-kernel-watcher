@@ -95,8 +95,8 @@ class TestConfigManager:
 
     def test_create_default_config_file_error(self):
         """設定ファイル作成時のエラーハンドリングをテスト"""
-        # 存在しないディレクトリにファイルを作成しようとする
-        invalid_path = Path("/invalid/path/config.toml")
+        # Windowsで確実に無効なパスを使用
+        invalid_path = Path("Z:\\nonexistent\\deeply\\nested\\path\\config.toml")
         manager = ConfigManager(invalid_path)
 
         with pytest.raises(OSError):
