@@ -7,7 +7,7 @@ WSLカーネル監視ツールの設定ファイル（config.toml）の読み込
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Mapping, Optional, TextIO, cast
 
 import toml
 
@@ -115,29 +115,29 @@ class ConfigManager:
             logger.error(f"設定ファイルの作成に失敗しました: {e}")
             raise
 
-    def _write_toml_config(self, file, config_dict: dict) -> None:
+    def _write_toml_config(self, stream: TextIO, config_dict: Mapping[str, Any]) -> None:
         """TOML形式で設定を書き込む"""
-        file.write("# WSL Kernel Watcher 設定ファイル\n")
-        file.write("# このファイルはアプリケーションの動作を制御します\n\n")
+        stream.write("# WSL Kernel Watcher 設定ファイル\n")
+        stream.write("# このファイルはアプリケーションの動作を制御します\n\n")
 
         # 階層構造で書き込み
-        file.write("[general]\n")
-        file.write(f'execution_mode = "{config_dict["execution_mode"]}"\n')
-        file.write(
+        stream.write("[general]\n")
+        stream.write(f'execution_mode = "{config_dict["execution_mode"]}"\n')
+        stream.write(
             f"check_interval_minutes = {config_dict['check_interval_minutes']}\n"
         )
-        file.write(f'repository_url = "{config_dict["repository_url"]}"\n\n')
+        stream.write(f'repository_url = "{config_dict["repository_url"]}"\n\n')
 
-        file.write("[notification]\n")
-        file.write(f"enabled = {str(config_dict['notification_enabled']).lower()}\n\n")
+        stream.write("[notification]\n")
+        stream.write(f"enabled = {str(config_dict['notification_enabled']).lower()}\n\n")
 
-        file.write("[notification.click_action]\n")
-        file.write(
+        stream.write("[notification.click_action]\n")
+        stream.write(
             f"enable_build_action = {str(config_dict['enable_build_action']).lower()}\n\n"
         )
 
-        file.write("[logging]\n")
-        file.write(f'level = "{config_dict["log_level"]}"\n')
+        stream.write("[logging]\n")
+        stream.write(f'level = "{config_dict["log_level"]}"\n')
 
     def validate_config(self, config: Config) -> bool:
         """設定値の妥当性を検証
@@ -175,13 +175,15 @@ class ConfigManager:
             return False
 
         # ブール値の検証
-        if not isinstance(config.enable_build_action, bool):
+        enable_build_action = cast(Any, config.enable_build_action)
+        if not isinstance(enable_build_action, bool):
             logger.error(
                 f"enable_build_actionの値が不正です: {config.enable_build_action}"
             )
             return False
 
-        if not isinstance(config.notification_enabled, bool):
+        notification_enabled = cast(Any, config.notification_enabled)
+        if not isinstance(notification_enabled, bool):
             logger.error(
                 f"notification_enabledの値が不正です: {config.notification_enabled}"
             )
@@ -253,3 +255,4 @@ class ConfigManager:
                 "level", config_data.get("log_level", Config().log_level)
             ),
         )
+

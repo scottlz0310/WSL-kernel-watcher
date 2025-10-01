@@ -10,7 +10,7 @@ import logging.handlers
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TypedDict
 
 
 class LogRotationConfig:
@@ -25,6 +25,18 @@ class LogRotationConfig:
         self.max_bytes = max_bytes
         self.backup_count = backup_count
         self.cleanup_days = cleanup_days
+
+
+class LogBackupInfo(TypedDict):
+    path: str
+    size: int
+
+
+class LogStats(TypedDict):
+    log_file_path: Optional[str]
+    log_file_size: int
+    backup_files: list[LogBackupInfo]
+    total_size: int
 
 
 class Logger:
@@ -264,9 +276,9 @@ class Logger:
                 self._logger.error(f"ログローテーション強制実行中にエラー: {e}")
             return False
 
-    def get_log_stats(self) -> dict:
+    def get_log_stats(self) -> LogStats:
         """ログファイルの統計情報を取得"""
-        stats = {
+        stats: LogStats = {
             "log_file_path": None,
             "log_file_size": 0,
             "backup_files": [],
@@ -276,11 +288,12 @@ class Logger:
         try:
             log_file = self.get_log_file_path()
             if log_file and log_file.exists():
+                log_file_size = log_file.stat().st_size
                 stats["log_file_path"] = str(log_file)
-                stats["log_file_size"] = log_file.stat().st_size
-                stats["total_size"] = stats["log_file_size"]
+                stats["log_file_size"] = log_file_size
+                total_size = log_file_size
 
-                # バックアップファイルを検索
+                # バックアップファイルを収集
                 log_dir = log_file.parent
                 backup_pattern = f"{log_file.name}.*"
                 for backup_file in log_dir.glob(backup_pattern):
@@ -292,14 +305,15 @@ class Logger:
                                 "size": backup_size,
                             }
                         )
-                        stats["total_size"] += backup_size
+                        total_size += backup_size
+
+                stats["total_size"] = total_size
 
         except Exception as e:
             if self._logger:
-                self._logger.error(f"ログ統計情報取得中にエラー: {e}")
+                self._logger.error(f"ログ統計取得中にエラー: {e}")
 
         return stats
-
 
 def get_logger() -> logging.Logger:
     """グローバルロガーを取得するヘルパー関数"""
@@ -323,3 +337,5 @@ def get_log_file_path() -> Optional[Path]:
     """ログファイルパスを取得するヘルパー関数"""
     logger_instance = Logger()
     return logger_instance.get_log_file_path()
+
+

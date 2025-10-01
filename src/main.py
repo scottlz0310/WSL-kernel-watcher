@@ -9,6 +9,7 @@ WSLカーネル安定版リリース監視ツール - メインエントリー�
 import signal
 import sys
 import time
+from types import FrameType
 from pathlib import Path
 from typing import NoReturn, Optional
 
@@ -28,7 +29,7 @@ class WSLKernelWatcherApp:
     全コンポーネントを統合し、アプリケーションのライフサイクルを管理します。
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """アプリケーションを初期化"""
         self.logger = get_logger()
         self.config: Optional[Config] = None
@@ -61,6 +62,12 @@ class WSLKernelWatcherApp:
             if not self._initialize_config():
                 return False
 
+            if self.config is None:
+                self.logger.error("�ݒ�̎擾�Ɏ��s���܂���")
+                return False
+
+            config = self.config
+
             # Step 2: WSL連携機能の初期化
             if not self._initialize_wsl_utils():
                 return False
@@ -74,7 +81,7 @@ class WSLKernelWatcherApp:
                 return False
 
             # Step 5: タスクトレイ管理の初期化（ワンショットモードではスキップ）
-            if self.config.execution_mode != "oneshot":
+            if config.execution_mode != "oneshot":
                 if not self._initialize_tray_manager():
                     return False
 
@@ -139,7 +146,13 @@ class WSLKernelWatcherApp:
         """GitHub APIクライアントの初期化"""
         try:
             self.logger.debug("GitHub APIクライアントを初期化中...")
-            self.github_client = GitHubAPIClient(self.config.repository_url)
+            config = self.config
+            if config is None:
+                self.logger.error("�ݒ��̏����Ɏ��s���܂���")
+                return False
+
+            self.github_client = GitHubAPIClient(config.repository_url)
+
 
             # GitHub APIの基本チェック
             latest_release = self.github_client.get_latest_stable_release()
@@ -159,18 +172,26 @@ class WSLKernelWatcherApp:
     def _initialize_notification_manager(self) -> bool:
         """通知システムの初期化"""
         try:
-            self.logger.debug("通知システムを初期化中...")
-            self.notification_manager = NotificationManager(self.config, self.wsl_utils)
+            self.logger.debug("通知システムを初期化します...")
+            config = self.config
+            wsl_utils = self.wsl_utils
+            if config is None or wsl_utils is None:
+                self.logger.error("通知システムの初期化に必要な依存関係が不足しています")
+                return False
 
-            if self.notification_manager.is_notification_supported():
-                self.logger.info("Windows通知システムが利用可能です")
+            self.notification_manager = NotificationManager(config, wsl_utils)
+            notification_manager = self.notification_manager
+            assert notification_manager is not None
+
+            if notification_manager.is_notification_supported():
+                self.logger.info("Windows通知システムは利用可能です")
             else:
-                self.logger.warning("Windows通知システムが利用できません")
+                self.logger.warning("Windows通知システムは利用できません")
 
             return True
 
         except Exception as e:
-            self.logger.error(f"通知システムの初期化に失敗しました: {e}")
+            self.logger.error(f"通知システムの初期化中にエラーが発生しました: {e}")
             return False
 
     def _initialize_tray_manager(self) -> bool:
@@ -196,19 +217,32 @@ class WSLKernelWatcherApp:
     def _initialize_scheduler(self) -> bool:
         """スケジューリングシステムの初期化"""
         try:
-            self.logger.debug("スケジューリングシステムを初期化中...")
+            self.logger.debug("スケジューラーを初期化します...")
+            config = self.config
+            github_client = self.github_client
+            wsl_utils = self.wsl_utils
+            notification_manager = self.notification_manager
+            if None in (config, github_client, wsl_utils, notification_manager):
+                self.logger.error("スケジューラーの初期化に必要な依存関係が不足しています")
+                return False
+
+            assert config is not None
+            assert github_client is not None
+            assert wsl_utils is not None
+            assert notification_manager is not None
+
             self.scheduler = Scheduler(
-                self.config,
-                self.github_client,
-                self.wsl_utils,
-                self.notification_manager,
+                config,
+                github_client,
+                wsl_utils,
+                notification_manager,
             )
 
-            self.logger.info("スケジューリングシステムを初期化しました")
+            self.logger.info("スケジューラーの初期化が完了しました")
             return True
 
         except Exception as e:
-            self.logger.error(f"スケジューリングシステムの初期化に失敗しました: {e}")
+            self.logger.error(f"スケジューラーの初期化中にエラーが発生しました: {e}")
             return False
 
     def start(self) -> bool:
@@ -222,11 +256,16 @@ class WSLKernelWatcherApp:
             self.logger.info("アプリケーションを開始します")
 
             # スケジューラーによる監視を開始
-            if not self.scheduler.start_monitoring():
+            scheduler = self.scheduler
+            if scheduler is None:
+                self.logger.error("スケジューラーが初期化されていません")
+                return False
+
+            if not scheduler.start_monitoring():
                 self.logger.error("監視の開始に失敗しました")
                 return False
 
-            self.logger.info("WSLカーネル監視を開始しました")
+            self.logger.info("WSLカーネルの監視を開始しました")
             return True
 
         except Exception as e:
@@ -243,7 +282,12 @@ class WSLKernelWatcherApp:
             self.logger.info("アプリケーションのメインループを開始します")
 
             # タスクトレイアイコンが実行中の間、アプリケーションを維持
-            while not self._shutdown_requested and self.tray_manager.is_running():
+            tray_manager = self.tray_manager
+            if tray_manager is None:
+                self.logger.error("トレイマネージャーが初期化されていません")
+                return
+
+            while not self._shutdown_requested and tray_manager.is_running():
                 time.sleep(1)
 
             self.logger.info("メインループを終了します")
@@ -254,33 +298,28 @@ class WSLKernelWatcherApp:
             self.logger.error(f"メインループ中にエラーが発生しました: {e}")
 
     def run_oneshot(self) -> None:
-        """
-        ワンショットモードで実行
-
-        チェックを一度実行して即座に終了します。
-        """
+        """単発モードでカーネルチェックを1回実行する"""
         try:
-            self.logger.info("ワンショットモードでカーネルチェックを実行します")
+            self.logger.info("単発モードでカーネルチェックを実行します")
 
-            if self.scheduler:
-                # ワンショットチェックを実行（常に通知表示）
-                result = self.scheduler.check_for_updates(force_notify=True)
+            scheduler = self.scheduler
+            if scheduler is not None:
+                # 単発モードのチェックを実行（必要に応じて通知）
+                result = scheduler.check_for_updates(force_notify=True)
                 if result:
-                    self.logger.info("カーネルチェックが正常に完了しました")
+                    self.logger.info("カーネルチェックで更新が見つかりました")
                 else:
                     self.logger.warning("カーネルチェックに失敗しました")
             else:
                 self.logger.error("スケジューラーが初期化されていません")
 
-            self.logger.info("ワンショットモード完了、アプリケーションを終了します")
+            self.logger.info("単発モードの処理が終了し、アプリケーションを終了します")
 
         except Exception as e:
-            self.logger.error(f"ワンショットモード実行中にエラーが発生しました: {e}")
+            self.logger.error(f"単発モードの実行中にエラーが発生しました: {e}")
 
     def shutdown(self) -> None:
-        """
-        アプリケーションの終了処理
-        """
+        """アプリケーションの終了処理"""
         if self._shutdown_in_progress:
             return
 
@@ -290,23 +329,25 @@ class WSLKernelWatcherApp:
             self._shutdown_requested = True
 
             # スケジューラーを停止
-            if self.scheduler:
-                self.scheduler.stop_monitoring()
+            scheduler = self.scheduler
+            if scheduler is not None:
+                scheduler.stop_monitoring()
                 self.logger.debug("スケジューラーを停止しました")
 
-            # タスクトレイアイコンを停止
-            if self.tray_manager:
-                self.tray_manager.stop_icon()
-                self.logger.debug("タスクトレイアイコンを停止しました")
+            # トレイアイコンを停止
+            tray_manager = self.tray_manager
+            if tray_manager is not None:
+                tray_manager.stop_icon()
+                self.logger.debug("トレイアイコンを停止しました")
 
             self.logger.info("アプリケーションの終了処理が完了しました")
 
         except Exception as e:
-            self.logger.error(f"終了処理中にエラーが発生しました: {e}")
+            self.logger.error(f"終了処理でエラーが発生しました: {e}")
         finally:
             self._shutdown_in_progress = False
 
-    def _signal_handler(self, signum: int, frame) -> None:
+    def _signal_handler(self, signum: int, frame: Optional[FrameType]) -> None:
         """
         シグナルハンドラー
 
@@ -338,9 +379,10 @@ class WSLKernelWatcherApp:
         try:
             self.logger.info("手動チェックを実行します")
             self.logger.debug(f"schedulerオブジェクト: {self.scheduler}")
-            if self.scheduler:
-                self.logger.debug("scheduler.check_for_updates()を呼び出し中...")
-                result = self.scheduler.check_for_updates(force_notify=True)
+            scheduler = self.scheduler
+            if scheduler is not None:
+                self.logger.debug("scheduler.check_for_updates() を呼び出します...")
+                result = scheduler.check_for_updates(force_notify=True)
                 self.logger.debug(f"check_for_updates結果: {result}")
             else:
                 self.logger.warning("スケジューラーが初期化されていません")
@@ -352,35 +394,40 @@ class WSLKernelWatcherApp:
 
 def main() -> NoReturn:
     """
-    アプリケーションのメインエントリーポイント
+    アプリケーション用のメインエントリーポイント
 
-    全コンポーネントを統合したメインアプリケーションを起動します。
-    アプリケーション起動・終了処理と初期化エラーのハンドリングを実装します。
+    全コンポーネントを初期化し、アプリケーションを起動します。
+    アプリケーション終了時には適切なハンドリングを行います。
     """
     logger = get_logger()
-    app = None
+    app: Optional[WSLKernelWatcherApp] = None
 
     try:
-        logger.info("WSLカーネル安定版リリース監視ツールを開始します")
+        logger.info("WSLカーネルウォッチャーの監視を開始します")
 
         # アプリケーションインスタンスを作成
         app = WSLKernelWatcherApp()
 
-        # アプリケーションを初期化
+        # アプリケーションの初期化
         if not app.initialize():
             logger.error("アプリケーションの初期化に失敗しました")
             sys.exit(1)
 
-        # ワンショットモードの場合はタスクトレイやスケジューラーを開始しない
-        if app.config.execution_mode != "oneshot":
+        config = app.config
+        if config is None:
+            logger.error("設定の初期化に失敗しました")
+            sys.exit(1)
+
+        # 常駐モードの場合はタスクトレイとスケジューラーを起動
+        if config.execution_mode != "oneshot":
             # アプリケーションを開始
             if not app.start():
                 logger.error("アプリケーションの開始に失敗しました")
                 sys.exit(1)
 
-        # 実行モードに応じて処理を分岐
-        if app.config.execution_mode == "oneshot":
-            logger.info("ワンショットモードで実行します")
+        # 実行モードに応じて動作を分岐
+        if config.execution_mode == "oneshot":
+            logger.info("単発モードで実行します")
             app.run_oneshot()
         else:
             logger.info("常駐モードで実行します")
@@ -388,21 +435,28 @@ def main() -> NoReturn:
             app.run()
 
     except KeyboardInterrupt:
-        logger.info("ユーザーによる中断を検出しました")
+        logger.info("ユーザーによる中断が検出されました")
     except Exception as e:
-        logger.error(f"予期しないエラーが発生しました: {e}", exc_info=True)
+        logger.error(f"予期せぬエラーが発生しました: {e}", exc_info=True)
         sys.exit(1)
     finally:
-        # 終了処理（ワンショットモードではシンプルな終了）
+        # 終了処理（単発モードではシンプルな終了）
         if app:
-            if app.config.execution_mode == "oneshot":
-                logger.info("ワンショットモード終了")
+            config = app.config
+            if config is not None and config.execution_mode == "oneshot":
+                logger.info("単発モード終了")
             else:
                 app.shutdown()
-        logger.info("アプリケーションを終了しました")
+        logger.info("アプリケーションを終了します")
 
     sys.exit(0)
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
