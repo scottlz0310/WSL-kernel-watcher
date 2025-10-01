@@ -165,7 +165,7 @@ git clone https://github.com/wsl-kernel-watcher/wsl-kernel-watcher.git
 cd wsl-kernel-watcher
 
 # 開発用依存関係をインストール
-uv sync --extra dev
+uv sync --group dev
 
 # pre-commitフックをセットアップ
 uv run pre-commit install

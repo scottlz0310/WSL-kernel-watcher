@@ -41,7 +41,7 @@ install-dev:
 
 requirements:
 	uv pip compile pyproject.toml -o requirements.txt
-	uv pip compile pyproject.toml --extra dev -o requirements-dev.txt
+	uv pip compile pyproject.toml --group dev -o requirements-dev.txt
 
 lock:
 	uv lock

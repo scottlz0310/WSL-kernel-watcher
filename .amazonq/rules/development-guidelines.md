@@ -3,7 +3,7 @@
 ## 開発環境セットアップ
 ```powershell
 # uvを使用した環境構築
-uv sync --extra dev
+uv sync --group dev
 uv run pre-commit install
 ```
 

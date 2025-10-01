@@ -202,7 +202,7 @@ function Install-WithUV {
         uv venv
 
         if ($IsDev) {
-            uv sync --extra dev
+            uv sync --group dev
             uv run pre-commit install
 
             Write-Host "Development environment setup completed." -ForegroundColor Green

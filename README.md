@@ -101,7 +101,7 @@ cd WSL-kernel-watcher
 uv venv
 
 # 開発用依存関係をインストール
-uv sync --extra dev
+uv sync --group dev
 
 # pre-commitフックをセットアップ
 uv run pre-commit install
@@ -238,7 +238,7 @@ uv python install 3.13
 uv python pin 3.13
 
 # 環境の再構築
-uv sync --extra dev
+uv sync --group dev
 ```
 
 ## 開発
@@ -247,7 +247,7 @@ uv sync --extra dev
 
 ```powershell
 # 依存関係のインストール
-uv sync --extra dev
+uv sync --group dev
 
 # pre-commitフックのセットアップ
 uv run pre-commit install
