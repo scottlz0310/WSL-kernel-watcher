@@ -15,9 +15,9 @@ try:
 except ImportError:
     WINDOWS_TOASTS_AVAILABLE = False
     # テスト環境やWindows以外の環境での動作を考慮
-    WindowsToaster = None  # type: ignore
-    Toast = None  # type: ignore
-    ToastDisplayImage = None  # type: ignore
+    WindowsToaster = None
+    Toast = None
+    ToastDisplayImage = None
 
 from .config import Config
 from .logger import get_logger
