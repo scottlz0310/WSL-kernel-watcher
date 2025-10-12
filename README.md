@@ -1,5 +1,9 @@
 # WSLカーネル安定版リリース監視ツール
 
+> **⚠️ このリポジトリはアーカイブ化されました**  
+> 機能は [Mcp-Docker/github_release_watcher](https://github.com/scottlz0310/Mcp-Docker) に移行しました。  
+> 詳細は [ARCHIVE_NOTICE.md](ARCHIVE_NOTICE.md) をご確認ください。
+
 [![CI](https://github.com/scottlz0310/WSL-kernel-watcher/workflows/CI/badge.svg)](https://github.com/scottlz0310/WSL-kernel-watcher/actions)
 [![codecov](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
