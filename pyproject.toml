@@ -66,6 +66,7 @@ dev = [
     "pytest-mock>=3.15.0",
     "pytest-cov>=6.2.1",
     "pytest-timeout>=2.3.0",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "black>=24.0.0",
@@ -148,6 +149,7 @@ testpaths = ["tests", "tests_v2"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -160,15 +162,17 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "timeout: marks tests with custom timeout settings",
+    "asyncio: marks tests as async tests",
 ]
 
 # Coverage設定
 [tool.coverage.run]
-source = ["src", "src_v2"]
+source = ["src_v2"]
 omit = [
     "*/tests/*",
     "*/tests_v2/*",
     "*/test_*",
+    "src/*",
 ]
 
 [tool.coverage.report]

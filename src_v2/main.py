@@ -22,7 +22,7 @@ def setup_logging(log_level: str) -> None:
 class WSLKernelWatcher:
     """WSLカーネル監視アプリケーション"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = ConfigManager.load()
         self.github_watcher = GitHubWatcher(self.config.repository_url)
         self.notifier = DockerNotifier()

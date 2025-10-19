@@ -25,33 +25,28 @@ class TestSetupLogging:
 class TestWSLKernelWatcher:
     """WSLKernelWatcherクラスのテスト"""
 
-    @patch("src_v2.main.ConfigManager")
-    @patch("src_v2.main.GitHubWatcher")
-    @patch("src_v2.main.DockerNotifier")
-    @patch("src_v2.main.setup_logging")
-    def setup_method(
-        self,
-        mock_setup_logging,
-        mock_notifier_class,
-        mock_watcher_class,
-        mock_config_manager,
-    ):
+    @pytest.fixture(autouse=True)
+    def setup(self):
         """テストセットアップ"""
-        # モック設定
-        mock_config = Mock()
-        mock_config.repository_url = "test/repo"
-        mock_config.check_interval_minutes = 1
-        mock_config.log_level = "INFO"
-        mock_config_manager.load.return_value = mock_config
+        with patch("src_v2.main.ConfigManager") as mock_config_manager, \
+             patch("src_v2.main.GitHubWatcher") as mock_watcher_class, \
+             patch("src_v2.main.DockerNotifier") as mock_notifier_class, \
+             patch("src_v2.main.setup_logging"):
+            
+            mock_config = Mock()
+            mock_config.repository_url = "test/repo"
+            mock_config.check_interval_minutes = 1
+            mock_config.log_level = "INFO"
+            mock_config_manager.load.return_value = mock_config
 
-        self.mock_github_watcher = Mock()
-        mock_watcher_class.return_value = self.mock_github_watcher
+            self.mock_github_watcher = Mock()
+            mock_watcher_class.return_value = self.mock_github_watcher
 
-        self.mock_notifier = Mock()
-        mock_notifier_class.return_value = self.mock_notifier
+            self.mock_notifier = Mock()
+            mock_notifier_class.return_value = self.mock_notifier
 
-        # テスト対象インスタンス作成
-        self.watcher = WSLKernelWatcher()
+            self.watcher = WSLKernelWatcher()
+            yield
 
     @patch("src_v2.main.ConfigManager")
     @patch("src_v2.main.GitHubWatcher")
