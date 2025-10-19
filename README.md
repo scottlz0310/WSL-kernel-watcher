@@ -88,11 +88,11 @@ services:
 ### テスト実行
 
 ```bash
-# v2モジュールのテスト
-uv run pytest tests_v2/ -v
+# パッケージテスト
+uv run pytest tests/ -v
 
 # カバレッジ付き
-uv run pytest tests_v2/ --cov=src_v2 --cov-report=html
+uv run pytest tests/ --cov=src --cov-report=html
 ```
 
 ### ローカル実行
@@ -104,7 +104,7 @@ export CHECK_INTERVAL_MINUTES=30
 export LOG_LEVEL=DEBUG
 
 # 実行
-uv run python -m src_v2.main
+uv run python -m src.main
 ```
 
 ## トラブルシューティング
@@ -135,14 +135,14 @@ docker-compose up -d
 ## ディレクトリ構成
 
 ```
-src_v2/                    # v2実装
+src/                        # アプリケーション本体
 ├── __init__.py
 ├── docker_notifier.py     # WSL経由通知
 ├── github_watcher.py      # GitHub監視
 ├── main.py               # メインアプリ
 └── config.py             # 設定管理
 
-tests_v2/                  # v2テスト
+tests/                      # 自動テスト
 ├── test_docker_notifier.py
 ├── test_github_watcher.py
 ├── test_config.py
@@ -151,7 +151,7 @@ tests_v2/                  # v2テスト
 
 Dockerfile                 # Dockerイメージ定義
 docker-compose.yml         # Docker Compose設定
-.env.example              # 環境変数例
+.env.example               # 環境変数例
 ```
 
 ## ライセンス

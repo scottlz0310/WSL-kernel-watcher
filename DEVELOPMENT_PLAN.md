@@ -14,29 +14,28 @@ Windows Toast通知
 
 ## ディレクトリ構成
 ```
-src_v2/          # 新実装
+src/             # アプリケーション本体
 ├── __init__.py
 ├── docker_notifier.py    # WSL経由通知
 ├── github_watcher.py     # GitHub監視
 ├── main.py              # エントリーポイント
 └── config.py            # 設定管理
 
-tests_v2/        # 新テスト
+tests/           # 自動テスト
 ├── __init__.py
 ├── test_docker_notifier.py
 ├── test_github_watcher.py
 └── test_main.py
 
-docker/          # Docker関連
-├── Dockerfile
-└── docker-compose.yml
+Dockerfile       # Dockerイメージ定義
+docker-compose.yml
 ```
 
 ## 実装ステップ
 
 ### Phase 1: 基盤実装 ✅
 - [x] 作業ブランチ作成: `feature/docker-architecture-v2`
-- [x] ディレクトリ構成作成: `src_v2/`, `tests_v2/`
+- [x] ディレクトリ構成作成: `src/`, `tests/`
 - [x] Docker設定: `Dockerfile`, `docker-compose.yml`
 - [x] 基本通知モジュール: `docker_notifier.py`
 

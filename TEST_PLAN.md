@@ -36,11 +36,11 @@
 docker-compose build
 
 # 2. 依存関係確認
-docker-compose run --rm wsl-kernel-watcher uv run python -c "import src_v2; print('OK')"
+docker-compose run --rm wsl-kernel-watcher uv run python -c "import src; print('OK')"
 
 # 3. GitHub API接続テスト
 docker-compose run --rm wsl-kernel-watcher uv run python -c "
-from src_v2.github_watcher import GitHubWatcher
+from src.github_watcher import GitHubWatcher
 watcher = GitHubWatcher()
 release = watcher.get_latest_stable_release()
 print(f'Latest: {release.tag_name if release else None}')
@@ -48,7 +48,7 @@ print(f'Latest: {release.tag_name if release else None}')
 
 # 4. 設定読み込みテスト
 docker-compose run --rm -e LOG_LEVEL=DEBUG wsl-kernel-watcher uv run python -c "
-from src_v2.config import ConfigManager
+from src.config import ConfigManager
 config = ConfigManager.load()
 print(f'Config: {config.repository_url}, {config.check_interval_minutes}min')
 "
