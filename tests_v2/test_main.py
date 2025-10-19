@@ -28,11 +28,12 @@ class TestWSLKernelWatcher:
     @pytest.fixture(autouse=True)
     def setup(self):
         """テストセットアップ"""
-        with patch("src_v2.main.ConfigManager") as mock_config_manager, \
-             patch("src_v2.main.GitHubWatcher") as mock_watcher_class, \
-             patch("src_v2.main.DockerNotifier") as mock_notifier_class, \
-             patch("src_v2.main.setup_logging"):
-            
+        with (
+            patch("src_v2.main.ConfigManager") as mock_config_manager,
+            patch("src_v2.main.GitHubWatcher") as mock_watcher_class,
+            patch("src_v2.main.DockerNotifier") as mock_notifier_class,
+            patch("src_v2.main.setup_logging"),
+        ):
             mock_config = Mock()
             mock_config.repository_url = "test/repo"
             mock_config.check_interval_minutes = 1
