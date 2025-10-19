@@ -144,7 +144,7 @@ ignore_missing_imports = true
 
 # Pytest設定
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "tests_v2"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -164,9 +164,10 @@ markers = [
 
 # Coverage設定
 [tool.coverage.run]
-source = ["src"]
+source = ["src", "src_v2"]
 omit = [
     "*/tests/*",
+    "*/tests_v2/*",
     "*/test_*",
 ]
 

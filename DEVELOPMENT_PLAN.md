@@ -40,16 +40,16 @@ docker/          # Docker関連
 - [x] Docker設定: `Dockerfile`, `docker-compose.yml`
 - [x] 基本通知モジュール: `docker_notifier.py`
 
-### Phase 2: コア機能実装
-- [ ] GitHub API監視モジュール
-- [ ] 設定管理モジュール
-- [ ] メインアプリケーション
-- [ ] ログ機能
+### Phase 2: コア機能実装 ✅
+- [x] GitHub API監視モジュール
+- [x] 設定管理モジュール
+- [x] メインアプリケーション
+- [x] ログ機能
 
-### Phase 3: テスト実装
-- [ ] 単体テスト作成
-- [ ] 統合テスト作成
-- [ ] Docker環境テスト
+### Phase 3: テスト実装 ✅
+- [x] 単体テスト作成
+- [x] 統合テスト作成
+- [x] Docker環境テスト
 
 ### Phase 4: 統合・移行
 - [ ] 既存機能との互換性確認
@@ -75,5 +75,5 @@ docker/          # Docker関連
 
 ## 現在の状況
 - ブランチ: `feature/docker-architecture-v2`
-- 完了: Phase 1
-- 次のタスク: GitHub監視モジュール実装
+- 完了: Phase 1, Phase 2, Phase 3
+- 次のタスク: 統合・移行 (Phase 4)
