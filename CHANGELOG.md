@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-01-19
+
+### Added
+- 🐳 **Docker常駐アーキテクチャ**: 完全新設計による軽量化
+  - Linuxコンテナで24/7監視
+  - WSL経由でWindows Toast通知
+  - 環境変数による簡単設定
+  - 自動再起動機能
+- 🔧 **操作系テストスイート**: 包括的な動作確認
+  - Dockerビルド・起動確認
+  - GitHub API接続テスト
+  - WSL経由通知テスト（WSL環境自動検知）
+  - エラーハンドリング確認
+- 🌐 **WSL環境自動検知**: `/proc/version`からMicrosoft/WSL検出
+- ⚙️ **環境変数設定**: docker-compose.ymlで全設定管理
+
+### Changed
+- 🏗️ **破壊的変更**: タスクトレイ常駐からDocker常駐に完全移行
+- 📦 **依存関係最小化**: Docker環境に最適化
+- 🔄 **非同期処理**: リソース効率的な実装
+
+### Removed
+- ❌ **タスクトレイ機能**: Docker常駐により不要
+- ❌ **config.toml**: 環境変数に統一
+- ❌ **Windows専用依存**: Linuxコンテナで動作
+
+### Technical
+- Docker + docker-compose対応
+- WSL経由PowerShell実行
+- 環境変数による設定管理
+- 操作系テスト完備
+
 ## [1.2.0] - 2025-01-10
 
 ### Added
@@ -95,6 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - レート制限対応
 - リトライ機能
 
+[2.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/releases/tag/v1.0.0
