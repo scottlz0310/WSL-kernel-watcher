@@ -66,6 +66,7 @@ dev = [
     "pytest-mock>=3.15.0",
     "pytest-cov>=6.2.1",
     "pytest-timeout>=2.3.0",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "black>=24.0.0",
@@ -78,6 +79,7 @@ dev = [
 
 [project.scripts]
 wsl-kernel-watcher = "src.main:main"
+wsl-kernel-watcher-v2 = "src.main:main"
 wkw = "src.main:main"
 
 [project.urls]
@@ -111,6 +113,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["T20"]  # テストファイルではprint文を許可
+"test-*.py" = ["T20"]  # テストスクリプトではprint文を許可
 
 [tool.ruff.format]
 quote-style = "double"
@@ -148,6 +151,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -160,6 +164,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "timeout: marks tests with custom timeout settings",
+    "asyncio: marks tests as async tests",
 ]
 
 # Coverage設定

@@ -1,308 +1,159 @@
-# WSLカーネル安定版リリース監視ツール
+# WSL Kernel Watcher v2 - Docker常駐版
 
-> **⚠️ このリポジトリはアーカイブ化されました**  
-> 機能は [Mcp-Docker/github_release_watcher](https://github.com/scottlz0310/Mcp-Docker) に移行しました。  
-> 詳細は [ARCHIVE_NOTICE.md](ARCHIVE_NOTICE.md) をご確認ください。
+Docker常駐 → WSL経由PowerShell → Windows Toast通知の新アーキテクチャ
 
-[![CI](https://github.com/scottlz0310/WSL-kernel-watcher/workflows/CI/badge.svg)](https://github.com/scottlz0310/WSL-kernel-watcher/actions)
-[![codecov](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/scottlz0310/WSL-kernel-watcher)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+## アーキテクチャ
 
-Microsoft公式のWSL2 Linuxカーネルリポジトリ（microsoft/WSL2-Linux-Kernel）を監視し、新しい安定版リリースが公開された際にWindowsトースト通知でユーザーに知らせる常駐型アプリケーションです。
-
-## 機能
-
-- GitHub APIを使用したWSL2カーネルリリースの自動監視
-- プレリリース（RC版、プレビュー版）の除外
-- 現在のWSLカーネルバージョンとの比較
-- Windowsトースト通知による更新通知
-- **🆕 ワンショットモード**: 一度だけチェックして終了（CI/CDやスケジュールタスク向け）
-- タスクトレイでの常駐動作
-- 設定ファイルによるカスタマイズ
-- 包括的なログ機能
-
-## 必要環境
-
-- Windows 10/11
-- Python 3.9以上
-- WSL2がインストールされていること
-
-## インストール
-
-### 方法0: install.ps1 を使う (Windows)
-
-```powershell
-.\scripts\install.ps1
+```
+┌─────────────────────────────────────┐
+│  Docker Container (Linux)           │
+│  ┌─────────────────────────────┐   │
+│  │ WSL Kernel Watcher v2       │   │
+│  │ - GitHub API監視            │   │
+│  │ - バージョン比較            │   │
+│  └─────────────────────────────┘   │
+└─────────────────┬───────────────────┘
+                  │ 新バージョン検出
+                  ↓
+         ┌────────────────────┐
+         │ WSL経由でPowerShell │
+         │ 実行                │
+         └────────┬───────────┘
+                  │
+                  ↓
+         ┌────────────────────┐
+         │ Windows Toast通知   │
+         └────────────────────┘
 ```
 
-PowerShell スクリプトは uv / pipx の確認、`.venv` の作成、`config.toml` の生成まで自動化します。`-InstallPath` を指定すると、本番用に別フォルダへ展開できます。
+## 特徴
 
-```powershell
-.\scripts\install.ps1 -InstallMethod uv -InstallPath "C:\Apps\WSLKernelWatcher"
+- 🐳 **Docker常駐**: 軽量なLinuxコンテナで24/7監視
+- 🔔 **WSL経由通知**: Docker → WSL → Windows Toast通知
+- ⚙️ **環境変数設定**: docker-compose.ymlで簡単設定
+- 🔄 **自動再起動**: コンテナクラッシュ時も自動復旧
+- 📊 **非同期処理**: リソース効率的な実装
+
+## クイックスタート
+
+### 1. 環境変数設定（オプション）
+
+```bash
+cp .env.example .env
+# .envファイルを編集
 ```
 
-`pipx` を選んだ場合の設定ファイルは `%APPDATA%\wsl-kernel-watcher\config.toml` に作成されます。
+### 2. Docker起動
 
-### 方法1: uvを使用したインストール（推奨）
-
-#### 前提条件
-- [uv](https://docs.astral.sh/uv/)がインストールされていること
-
-```powershell
-# uvのインストール（未インストールの場合）
-irm https://astral.sh/uv/install.ps1 | iex
+```bash
+docker-compose up -d
 ```
 
-#### インストール手順
+### 3. ログ確認
 
-```powershell
-# リポジトリをクローン
-git clone https://github.com/scottlz0310/WSL-kernel-watcher.git
-cd WSL-kernel-watcher
-
-# 仮想環境を作成し、依存関係をインストール
-uv sync
-
-# アプリケーションを実行
-uv run wsl-kernel-watcher
+```bash
+docker-compose logs -f wsl-kernel-watcher
 ```
 
-### 方法2: pipxを使用したグローバルインストール
+### 4. 停止
 
-#### 前提条件
-- Python 3.9以上
-- [pipx](https://pipx.pypa.io/)がインストールされていること
-
-```powershell
-# pipxのインストール（未インストールの場合）
-python -m pip install --user pipx
-python -m pipx ensurepath
+```bash
+docker-compose down
 ```
 
-#### インストール手順
+## 設定
 
-```powershell
-# GitHubから直接インストール
-pipx install git+https://github.com/scottlz0310/WSL-kernel-watcher.git
+### 環境変数
 
-# または、ローカルディレクトリからインストール
-cd WSL-kernel-watcher
-pipx install .
+| 変数名 | デフォルト値 | 説明 |
+|--------|-------------|------|
+| `REPOSITORY_URL` | `microsoft/WSL2-Linux-Kernel` | 監視対象リポジトリ |
+| `CHECK_INTERVAL_MINUTES` | `30` | チェック間隔（分） |
+| `LOG_LEVEL` | `INFO` | ログレベル |
+| `GITHUB_TOKEN` | なし | GitHub Personal Access Token |
 
-# アプリケーションを実行
-wsl-kernel-watcher
-```
+### docker-compose.yml
 
-### 方法3: 開発環境セットアップ
-
-```powershell
-# リポジトリをクローン
-git clone https://github.com/scottlz0310/WSL-kernel-watcher.git
-cd WSL-kernel-watcher
-
-# 仮想環境を作成
-uv venv
-
-# 開発用依存関係をインストール
-uv sync --group dev
-
-# pre-commitフックをセットアップ
-uv run pre-commit install
-
-# アプリケーションを実行
-uv run python -m src.main
-```
-
-## 使用方法
-
-### 基本的な実行
-
-```powershell
-# 常駐モード（デフォルト）
-uv run python -m src.main
-
-# または
-uv run wsl-kernel-watcher
-```
-
-### ワンショットモード 🆕
-
-一度だけチェックして終了するモードです。CI/CDパイプラインやスケジュールタスクでの利用に適しています。
-
-```powershell
-# config.tomlでexecution_mode = "oneshot"に設定して実行
-uv run wsl-kernel-watcher
-
-# または直接実行（設定ファイルがワンショットモードに設定されている場合）
-python -m src.main
-```
-
-### 設定
-
-`config.toml`ファイルを編集して動作をカスタマイズできます：
-
-```toml
-[general]
-# 実行モード: "continuous" (常駐) または "oneshot" (ワンショット)
-execution_mode = "continuous"  # または "oneshot"
-
-# チェック間隔（分）
-check_interval_minutes = 30
-
-# 監視対象リポジトリ
-repository_url = "microsoft/WSL2-Linux-Kernel"
-
-[notification]
-# 通知機能の有効化
-enabled = true
-
-[notification.click_action]
-# ビルドアクションの有効化
-enable_build_action = false
-
-[logging]
-# ログレベル
-level = "INFO"
-```
-
-#### ワンショットモード設定例
-
-CI/CDパイプラインやスケジュールタスクでの利用時：
-
-```toml
-[general]
-execution_mode = "oneshot"
-check_interval_minutes = 30  # ワンショットモードでは無視されます
-
-[notification]
-enabled = true  # 更新がある場合は必ず通知します
-```
-
-### Windowsタスクスケジューラーでの自動実行（推奨）
-
-ワンショットモードを使用して、メモリ効率的な定期実行を設定できます。
-
-#### 1. 実行用スクリプトの準備
-
-プロジェクトディレクトリに以下のファイルが自動生成されます：
-
-- `run_wsl_watcher.bat` - 実行用バッチファイル
-- `run_wsl_watcher_silent.vbs` - サイレント実行用VBSスクリプト
-
-#### 2. タスクスケジューラーの設定
-
-```powershell
-# タスクスケジューラーを開く
-taskschd.msc
-```
-
-**タスク作成手順**：
-
-1. **基本タブ**：
-   - 名前: `WSL Kernel Watcher`
-   - 説明: `WSL2カーネル更新チェック`
-   - ユーザーがログオンしているかどうかにかかわらず実行する
-
-2. **トリガータブ**：
-   - 新規 → 毎日
-   - 開始時刻: 任意（例: 09:00）
-   - 詳細設定 → 繰り返し間隔: 30分、継続時間: 無期限
-
-3. **操作タブ**：
-   - プログラム: `[プロジェクトパス]\run_wsl_watcher_silent.vbs`
-   - 開始場所: `[プロジェクトパス]`
-
-4. **条件タブ**：
-   - ✅ ネットワーク接続が利用可能な場合のみ開始する
-
-#### 3. 動作確認
-
-```powershell
-# サイレント実行のテスト
-cscript run_wsl_watcher_silent.vbs
-```
-
-#### メリット
-
-- **メモリ効率**: 実行時のみリソースを使用
-- **サイレント実行**: ターミナルウィンドウが表示されない
-- **信頼性**: Windowsの標準機能で管理
-- **ログ記録**: 実行履歴を確認可能
-
-## 実運用での注意事項
-
-### Store版Pythonからの移行
-
-Windows Store版Pythonは開発に制限があるため、公式版への移行を推奨します：
-
-```powershell
-# uvでPython環境を管理（推奨）
-uv python install 3.13
-uv python pin 3.13
-
-# 環境の再構築
-uv sync --group dev
+```yaml
+services:
+  wsl-kernel-watcher:
+    environment:
+      - REPOSITORY_URL=microsoft/WSL2-Linux-Kernel
+      - CHECK_INTERVAL_MINUTES=30
+      - LOG_LEVEL=INFO
 ```
 
 ## 開発
 
-### 開発環境のセットアップ
+### テスト実行
 
-```powershell
-# 依存関係のインストール
-uv sync --group dev
+```bash
+# v2モジュールのテスト
+uv run pytest tests_v2/ -v
 
-# pre-commitフックのセットアップ
-uv run pre-commit install
+# カバレッジ付き
+uv run pytest tests_v2/ --cov=src_v2 --cov-report=html
 ```
 
-### テストの実行
+### ローカル実行
 
-```powershell
-# 全テストを実行
-uv run pytest
+```bash
+# 環境変数設定
+export REPOSITORY_URL=microsoft/WSL2-Linux-Kernel
+export CHECK_INTERVAL_MINUTES=30
+export LOG_LEVEL=DEBUG
 
-# カバレッジ付きでテスト実行
-uv run pytest --cov=src --cov-report=html
+# 実行
+uv run python -m src_v2.main
 ```
 
-### コード品質チェック
+## トラブルシューティング
 
-```powershell
-# Ruffによるリント・フォーマット
-uv run ruff check .
-uv run ruff format .
+### 通知が表示されない
 
-# MyPyによる型チェック
-uv run mypy src/
+1. WSLからPowerShellが実行できるか確認:
+   ```bash
+   wsl.exe -e powershell.exe -Command "Write-Host 'Test'"
+   ```
+
+2. Docker内からWSLにアクセスできるか確認:
+   ```bash
+   docker exec wsl-kernel-watcher wsl.exe -e echo "Test"
+   ```
+
+### コンテナが起動しない
+
+```bash
+# ログ確認
+docker-compose logs wsl-kernel-watcher
+
+# コンテナ再ビルド
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
-## プロジェクト構造
+## ディレクトリ構成
 
 ```
-WSL-kernel-watcher/
-├── src/                    # ソースコード
-│   ├── __init__.py
-│   ├── main.py            # エントリーポイント
-│   └── logger.py          # ログ設定
-├── tests/                 # テストコード
-├── config.toml           # 設定ファイル
-├── pyproject.toml        # プロジェクト設定
-└── README.md
+src_v2/                    # v2実装
+├── __init__.py
+├── docker_notifier.py     # WSL経由通知
+├── github_watcher.py      # GitHub監視
+├── main.py               # メインアプリ
+└── config.py             # 設定管理
+
+tests_v2/                  # v2テスト
+├── test_docker_notifier.py
+├── test_github_watcher.py
+├── test_config.py
+├── test_main.py
+└── test_integration.py
+
+Dockerfile                 # Dockerイメージ定義
+docker-compose.yml         # Docker Compose設定
+.env.example              # 環境変数例
 ```
 
 ## ライセンス
 
 MIT License
-
-## 貢献
-
-プルリクエストやイシューの報告を歓迎します。詳細は[CONTRIBUTING.md](CONTRIBUTING.md)をご覧ください。
-
-## リンク
-
-- [Changelog](CHANGELOG.md) - 変更履歴
-- [Contributing](CONTRIBUTING.md) - 開発ガイド
-- [Security Policy](SECURITY.md) - セキュリティポリシー
-- [License](LICENSE) - MITライセンス

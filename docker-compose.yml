@@ -1,0 +1,19 @@
+services:
+  wsl-kernel-watcher:
+    build: .
+    container_name: wsl-kernel-watcher
+    restart: unless-stopped
+    environment:
+      - REPOSITORY_URL=microsoft/WSL2-Linux-Kernel
+      - CHECK_INTERVAL_MINUTES=30
+      - LOG_LEVEL=INFO
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    volumes:
+      - /mnt/c/Windows/System32:/mnt/c/Windows/System32:ro
+      - /run/WSL:/run/WSL:ro
+    networks:
+      - wsl-watcher-net
+
+networks:
+  wsl-watcher-net:
+    driver: bridge
