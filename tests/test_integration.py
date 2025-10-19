@@ -2,13 +2,13 @@
 
 from unittest.mock import Mock, patch
 
-from src_v2.main import WSLKernelWatcher
+from src.main import WSLKernelWatcher
 
 
 class TestIntegration:
     """統合テスト"""
 
-    @patch("src_v2.main.ConfigManager")
+    @patch("src.main.ConfigManager")
     @patch("subprocess.run")
     @patch("requests.Session.get")
     async def test_full_workflow_new_release(
@@ -69,9 +69,9 @@ class TestIntegration:
         # PowerShellコマンドの検証
         call_args = mock_subprocess.call_args[0][0]
         assert "wsl.exe" in call_args
-        assert "powershell.exe" in call_args
+        assert "powershell.exe" in str(call_args)
 
-    @patch("src_v2.main.ConfigManager")
+    @patch("src.main.ConfigManager")
     @patch("requests.Session.get")
     async def test_prerelease_filtering(self, mock_get, mock_config_manager):
         """プレリリース除外の統合テスト"""
@@ -112,7 +112,7 @@ class TestIntegration:
         # 検証：プレリリースをスキップして安定版を選択
         assert watcher.current_version == "linux-msft-wsl-5.15.95.1"
 
-    @patch("src_v2.main.ConfigManager")
+    @patch("src.main.ConfigManager")
     @patch("requests.Session.get")
     async def test_api_error_handling(self, mock_get, mock_config_manager):
         """API エラーハンドリングの統合テスト"""

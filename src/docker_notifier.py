@@ -14,17 +14,21 @@ class DockerNotifier:
         try:
             ps_script = f'''
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
 $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-$toastXml = [xml] $template.GetXml()
-$toastXml.GetElementsByTagName("text")[0].AppendChild($toastXml.CreateTextNode("{title}")) | Out-Null
-$toastXml.GetElementsByTagName("text")[1].AppendChild($toastXml.CreateTextNode("{message}")) | Out-Null
-$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml)
+$template.GetElementsByTagName("text")[0].AppendChild($template.CreateTextNode("{title}")) | Out-Null
+$template.GetElementsByTagName("text")[1].AppendChild($template.CreateTextNode("{message}")) | Out-Null
+$toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("WSL.KernelWatcher")
 $notifier.Show($toast)
 '''
 
-            cmd = ["wsl.exe", "-e", "powershell.exe", "-Command", ps_script]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            # PowerShellのフルパスを使用（WSL環境対応）
+            ps_path = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+            cmd = ["wsl.exe", "-e", ps_path, "-Command", ps_script]
+            result = subprocess.run(
+                cmd, capture_output=True, timeout=30, encoding="cp932", errors="ignore"
+            )
 
             if result.returncode == 0:
                 logger.info(f"通知送信成功: {title}")

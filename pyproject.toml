@@ -79,6 +79,7 @@ dev = [
 
 [project.scripts]
 wsl-kernel-watcher = "src.main:main"
+wsl-kernel-watcher-v2 = "src.main:main"
 wkw = "src.main:main"
 
 [project.urls]
@@ -112,6 +113,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["T20"]  # テストファイルではprint文を許可
+"test-*.py" = ["T20"]  # テストスクリプトではprint文を許可
 
 [tool.ruff.format]
 quote-style = "double"
@@ -145,7 +147,7 @@ ignore_missing_imports = true
 
 # Pytest設定
 [tool.pytest.ini_options]
-testpaths = ["tests", "tests_v2"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -167,12 +169,10 @@ markers = [
 
 # Coverage設定
 [tool.coverage.run]
-source = ["src_v2"]
+source = ["src"]
 omit = [
     "*/tests/*",
-    "*/tests_v2/*",
     "*/test_*",
-    "src/*",
 ]
 
 [tool.coverage.report]

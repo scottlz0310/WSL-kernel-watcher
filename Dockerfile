@@ -5,7 +5,12 @@ WORKDIR /app
 # システム依存関係インストール
 RUN apt-get update && apt-get install -y \
     curl \
+    binfmt-support \
     && rm -rf /var/lib/apt/lists/*
+
+# WSL2統合のための設定
+ENV PATH="${PATH}:/mnt/c/Windows/System32"
+ENV WSLENV="PATH/l"
 
 # uvインストール
 RUN pip install --no-cache-dir uv
@@ -17,7 +22,8 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev
 
 # アプリケーションコードコピー
-COPY src_v2/ ./src_v2/
+COPY src/ ./src/
+COPY test-wsl-access.sh test-notification.py ./
 
 # 実行
-CMD ["uv", "run", "python", "-m", "src_v2.main"]
+CMD ["uv", "run", "python", "-m", "src.main"]

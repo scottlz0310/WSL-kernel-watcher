@@ -65,9 +65,12 @@ docker/          # Docker関連
 - [x] カバレッジ86.75%達成
 - [x] Docker動作確認
 
-### Phase 6: 最終化
-- [ ] 既存コード削除
-- [ ] README更新
+### Phase 6: 最終化 ✅
+- [x] 既存コード削除
+- [x] src_v2 → src リネーム
+- [x] tests_v2 → tests リネーム
+- [x] README更新
+- [x] 設定ファイル整理
 - [ ] mainブランチマージ
 
 ## 技術仕様

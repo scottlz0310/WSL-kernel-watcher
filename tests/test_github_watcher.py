@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from src_v2.github_watcher import GitHubWatcher, Release
+from src.github_watcher import GitHubWatcher, Release
 
 
 class TestGitHubWatcher:

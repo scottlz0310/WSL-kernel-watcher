@@ -3,7 +3,7 @@
 import subprocess
 from unittest.mock import Mock, patch
 
-from src_v2.docker_notifier import DockerNotifier
+from src.docker_notifier import DockerNotifier
 
 
 class TestDockerNotifier:
@@ -29,7 +29,7 @@ class TestDockerNotifier:
         # コマンド引数の検証
         call_args = mock_run.call_args
         assert "wsl.exe" in call_args[0][0]
-        assert "powershell.exe" in call_args[0][0]
+        assert "powershell.exe" in str(call_args[0][0])
 
     @patch("subprocess.run")
     def test_send_notification_failure(self, mock_run):
