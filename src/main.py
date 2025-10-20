@@ -33,7 +33,7 @@ class WSLKernelWatcher:
 
     async def run(self) -> None:
         """メイン実行ループ"""
-        self.logger.info("WSL Kernel Watcher v2 開始")
+        self.logger.info("WSL Kernel Watcher v2.1.0 開始")
 
         while True:
             try:

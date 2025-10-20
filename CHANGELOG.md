@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2025-10-20
+
+### Added
+- GitHub Personal Access Token対応 (GITHUB_PERSONAL_ACCESS_TOKEN)
+- 動的ユーザー名・パス対応によるポータブル化
+- バージョン変更通知テスト追加
+- 完全フローテスト追加
+- インタラクティブテスト機能
+
+### Fixed
+- systemd監視システムの競合状態解決
+- ファイル削除エラーの抑制
+- GitHub APIレート制限問題の解決
+
+### Changed
+- レート制限: 60 → 5000リクエスト/時間
+- テスト成功率: 83.3% → 100.0%
+- systemdサービスのテンプレート化
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

@@ -6,11 +6,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     binfmt-support \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
-
-# WSL2統合のための設定
-ENV PATH="${PATH}:/mnt/c/Windows/System32"
-ENV WSLENV="PATH/l"
 
 # uvインストール
 RUN pip install --no-cache-dir uv
@@ -23,7 +20,6 @@ RUN uv sync --frozen --no-dev
 
 # アプリケーションコードコピー
 COPY src/ ./src/
-COPY test-wsl-access.sh test-notification.py ./
 
 # 実行
 CMD ["uv", "run", "python", "-m", "src.main"]

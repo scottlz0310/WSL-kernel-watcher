@@ -16,7 +16,7 @@ include = [
 
 [project]
 name = "wsl-kernel-watcher"
-version = "2.0.0"
+version = "2.1.0"
 description = "Docker常駐型WSL2カーネル監視ツール - WSL経由Windows通知対応"
 authors = [
     {name = "WSL Kernel Watcher Team", email = "wsl-kernel-watcher@example.com"}

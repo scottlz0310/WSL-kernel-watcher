@@ -7,10 +7,11 @@ services:
       - REPOSITORY_URL=microsoft/WSL2-Linux-Kernel
       - CHECK_INTERVAL_MINUTES=30
       - LOG_LEVEL=INFO
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     volumes:
-      - /mnt/c/Windows/System32:/mnt/c/Windows/System32:ro
-      - /run/WSL:/run/WSL:ro
+      - .:/host:rw
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - wsl-watcher-net
 

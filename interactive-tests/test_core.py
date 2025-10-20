@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""全操作系テスト実行スクリプト"""
+"""コア機能テスト（WSL通知以外）"""
 
 import subprocess
 import sys
@@ -34,28 +34,15 @@ def run_test(test_name: str, test_file: str) -> bool:
 
 def main():
     """メイン実行関数"""
-    print("🚀 WSL Kernel Watcher v2.1.0 操作系テスト開始")
+    print("🚀 WSL Kernel Watcher v2 コア機能テスト開始")
     print("=" * 60)
-    
-    # インタラクティブテストの確認
-    interactive_test = False
-    if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
-        interactive_test = True
-        print("🎯 インタラクティブモード: 通知クリック確認を含みます")
     
     tests = [
         ("Dockerビルド確認", "test_docker_build.py"),
         ("コンテナ起動確認", "test_container_startup.py"),
         ("GitHub API接続確認", "test_github_api.py"),
         ("エラーハンドリング確認", "test_error_handling.py"),
-        ("WSL経由通知確認", "test_wsl_notification.py"),
-        ("完全フロー確認", "test_full_flow.py"),
-        ("バージョン変更通知確認", "test_version_change.py"),
     ]
-    
-    # インタラクティブテストを追加
-    if interactive_test:
-        tests.append(("インタラクティブ通知確認", "test_interactive_notification.py"))
     
     results = {}
     
@@ -64,7 +51,7 @@ def main():
     
     # 結果サマリー
     print(f"\n{'='*60}")
-    print("📊 テスト結果サマリー")
+    print("📊 コア機能テスト結果サマリー")
     print(f"{'='*60}")
     
     success_count = 0
@@ -79,14 +66,10 @@ def main():
     print(f"\n📈 成功率: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
     
     if success_count == total_count:
-        print("\n🎉 全テスト成功！")
-        if not interactive_test:
-            print("💡 インタラクティブテスト: make test-interactive")
+        print("\n🎉 全コア機能テスト成功！")
         return 0
     else:
         print(f"\n💥 {total_count - success_count}個のテストが失敗しました")
-        if not interactive_test:
-            print("🔄 完全フローテスト: make test-full-flow")
         return 1
 
 

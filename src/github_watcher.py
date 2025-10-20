@@ -34,6 +34,8 @@ class GitHubWatcher:
 
     def _create_session(self) -> requests.Session:
         """HTTPセッション作成"""
+        import os
+        
         session = requests.Session()
 
         retry_strategy = Retry(
@@ -47,13 +49,20 @@ class GitHubWatcher:
         session.mount("http://", adapter)
         session.mount("https://", adapter)
 
-        session.headers.update(
-            {
-                "User-Agent": "WSL-Kernel-Watcher-Docker/2.0",
-                "Accept": "application/vnd.github.v3+json",
-            }
-        )
-
+        headers = {
+            "User-Agent": "WSL-Kernel-Watcher-Docker/2.0",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        
+        # GitHub Personal Access Tokenを使用
+        github_token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN")
+        if github_token:
+            headers["Authorization"] = f"token {github_token}"
+            logger.info("GitHub Personal Access Tokenを使用")
+        else:
+            logger.warning("GitHub Personal Access Tokenが設定されていません")
+        
+        session.headers.update(headers)
         return session
 
     def get_latest_stable_release(self) -> Optional[Release]:

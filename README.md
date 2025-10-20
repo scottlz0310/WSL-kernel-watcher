@@ -1,4 +1,4 @@
-# WSL Kernel Watcher v2.0.0 - Docker常駐版
+# WSL Kernel Watcher v2.1.0 - Docker常駐版
 
 Docker常駐 → WSL経由PowerShell → Windows Toast通知の新アーキテクチャ
 
@@ -29,37 +29,40 @@ Docker常駐 → WSL経由PowerShell → Windows Toast通知の新アーキテ�
 ## 特徴
 
 - 🐳 **Docker常駐**: 軽量なLinuxコンテナで24/7監視
-- 🔔 **WSL経由通知**: Docker → WSL → Windows Toast通知
+- 🔔 **systemd自動化**: ファイル監視システムの自動起動・復旧
+- 📝 **ファイル監視**: Docker → ファイル作成 → systemd監視 → WSL実行
+- 🌐 **WSL経由通知**: WSL → PowerShell → Windows Toast通知
 - ⚙️ **環境変数設定**: docker-compose.ymlで簡単設定
-- 🔄 **自動再起動**: コンテナクラッシュ時も自動復旧
-- 📊 **非同期処理**: リソース効率的な実装
+- 🔄 **完全自動化**: 手動操作不要の運用
 
 ## クイックスタート
 
-### 1. 環境変数設定（オプション）
-
+### 1. systemd監視サービスのセットアップ
 ```bash
-cp .env.example .env
-# .envファイルを編集
+# WSLファイル監視システムをsystemdサービスとして登録
+./install-monitor.sh
 ```
 
-### 2. Docker起動
-
+### 2. Docker常駐監視の開始
 ```bash
-docker-compose up -d
+# 監視開始
+make start
+
+# ログ確認
+make logs
+
+# 停止
+make stop
 ```
 
-### 3. ログ確認
-
+### アンインストール
 ```bash
-docker-compose logs -f wsl-kernel-watcher
+# systemd監視サービスをアンインストール
+make uninstall-monitor
 ```
 
-### 4. 停止
-
-```bash
-docker-compose down
-```
+### 詳細な導入手順
+📋 **[INSTALLATION_GUIDE.md](docs/INSTALLATION_GUIDE.md)** を参照してください
 
 ## 設定
 
@@ -85,7 +88,23 @@ services:
 
 ## 開発
 
-### テスト実行
+### Makefileコマンド
+
+```bash
+# 操作系テスト実行
+make test
+
+# 通知テストのみ
+make test-notification
+
+# 開発環境セットアップ
+make dev-setup
+
+# コード品質チェック
+make check-all
+```
+
+### 直接実行
 
 ```bash
 # パッケージテスト

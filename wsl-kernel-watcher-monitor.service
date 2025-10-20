@@ -1,0 +1,16 @@
+[Unit]
+Description=WSL Kernel Watcher File Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=USER_PLACEHOLDER
+WorkingDirectory=WORKDIR_PLACEHOLDER
+ExecStart=WORKDIR_PLACEHOLDER/wsl-file-watcher.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
