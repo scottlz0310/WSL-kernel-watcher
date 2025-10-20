@@ -1,6 +1,5 @@
 """Docker通知モジュールのテスト"""
 
-import subprocess
 from unittest.mock import Mock, patch
 
 from src.docker_notifier import DockerNotifier
@@ -13,29 +12,41 @@ class TestDockerNotifier:
         """テストセットアップ"""
         self.notifier = DockerNotifier()
 
-    @patch("subprocess.run")
-    def test_send_notification_success(self, mock_run):
+    @patch("os.path.exists")
+    @patch("os.chmod")
+    @patch("builtins.open")
+    @patch("time.sleep")
+    def test_send_notification_success(
+        self, mock_sleep, mock_open, mock_chmod, mock_exists
+    ):
         """通知送信成功テスト"""
         # モック設定
-        mock_run.return_value = Mock(returncode=0, stderr="")
+        mock_exists.return_value = False  # スクリプトが削除された（実行完了）
+        mock_file = Mock()
+        mock_open.return_value.__enter__.return_value = mock_file
 
         # テスト実行
         result = self.notifier.send_notification("テストタイトル", "テストメッセージ")
 
         # 検証
         assert result is True
-        mock_run.assert_called_once()
+        mock_open.assert_called_once()
+        mock_chmod.assert_called_once()
+        mock_sleep.assert_called_once_with(2)
+        mock_exists.assert_called_once()
 
-        # コマンド引数の検証
-        call_args = mock_run.call_args
-        assert "wsl.exe" in call_args[0][0]
-        assert "powershell.exe" in str(call_args[0][0])
-
-    @patch("subprocess.run")
-    def test_send_notification_failure(self, mock_run):
+    @patch("os.path.exists")
+    @patch("os.chmod")
+    @patch("builtins.open")
+    @patch("time.sleep")
+    def test_send_notification_failure(
+        self, mock_sleep, mock_open, mock_chmod, mock_exists
+    ):
         """通知送信失敗テスト"""
         # モック設定
-        mock_run.return_value = Mock(returncode=1, stderr="エラーメッセージ")
+        mock_exists.return_value = True  # スクリプトが残っている（実行失敗）
+        mock_file = Mock()
+        mock_open.return_value.__enter__.return_value = mock_file
 
         # テスト実行
         result = self.notifier.send_notification("テストタイトル", "テストメッセージ")
@@ -43,11 +54,11 @@ class TestDockerNotifier:
         # 検証
         assert result is False
 
-    @patch("subprocess.run")
-    def test_send_notification_exception(self, mock_run):
+    @patch("builtins.open")
+    def test_send_notification_exception(self, mock_open):
         """通知送信例外テスト"""
         # モック設定
-        mock_run.side_effect = subprocess.TimeoutExpired("cmd", 30)
+        mock_open.side_effect = OSError("ファイルアクセスエラー")
 
         # テスト実行
         result = self.notifier.send_notification("テストタイトル", "テストメッセージ")

@@ -9,10 +9,10 @@ from pathlib import Path
 def test_github_connection():
     """GitHub API接続テスト"""
     print("🐙 GitHub API接続テスト開始...")
-    
+
     project_root = Path(__file__).parent.parent
-    
-    test_script = '''
+
+    test_script = """
 from src.github_watcher import GitHubWatcher
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -31,22 +31,34 @@ try:
 except Exception as e:
     print(f"❌ GitHub API接続エラー: {e}")
     raise
-'''
-    
+"""
+
     try:
-        result = subprocess.run([
-            "docker-compose", "run", "--rm",
-            "wsl-kernel-watcher",
-            "uv", "run", "python", "-c", test_script
-        ], cwd=project_root, capture_output=True, text=True, timeout=120)
-        
+        result = subprocess.run(
+            [
+                "docker-compose",
+                "run",
+                "--rm",
+                "wsl-kernel-watcher",
+                "uv",
+                "run",
+                "python",
+                "-c",
+                test_script,
+            ],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
         if result.returncode == 0:
             print(result.stdout)
             return True
         else:
             print(f"❌ GitHub API接続失敗: {result.stderr}")
             return False
-            
+
     except subprocess.TimeoutExpired:
         print("❌ GitHub APIテストタイムアウト")
         return False
@@ -58,10 +70,10 @@ except Exception as e:
 def test_rate_limit_handling():
     """レート制限処理テスト"""
     print("⏱️ レート制限処理テスト...")
-    
+
     project_root = Path(__file__).parent.parent
-    
-    test_script = '''
+
+    test_script = """
 from src.github_watcher import GitHubWatcher
 import requests
 
@@ -83,22 +95,34 @@ try:
 except Exception as e:
     print(f"❌ レート制限確認エラー: {e}")
     raise
-'''
-    
+"""
+
     try:
-        result = subprocess.run([
-            "docker-compose", "run", "--rm",
-            "wsl-kernel-watcher",
-            "uv", "run", "python", "-c", test_script
-        ], cwd=project_root, capture_output=True, text=True, timeout=60)
-        
+        result = subprocess.run(
+            [
+                "docker-compose",
+                "run",
+                "--rm",
+                "wsl-kernel-watcher",
+                "uv",
+                "run",
+                "python",
+                "-c",
+                test_script,
+            ],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
         if result.returncode == 0:
             print(result.stdout)
             return True
         else:
             print(f"❌ レート制限テスト失敗: {result.stderr}")
             return False
-            
+
     except Exception as e:
         print(f"❌ レート制限テストエラー: {e}")
         return False
@@ -107,10 +131,10 @@ except Exception as e:
 def test_prerelease_filtering():
     """プレリリース除外テスト"""
     print("🔍 プレリリース除外テスト...")
-    
+
     project_root = Path(__file__).parent.parent
-    
-    test_script = '''
+
+    test_script = """
 from src.github_watcher import GitHubWatcher
 
 watcher = GitHubWatcher()
@@ -135,22 +159,34 @@ for release_data in test_releases:
         print(f"✅ {tag}: 正しく判定 (プレリリース={is_pre})")
     else:
         print(f"❌ {tag}: 判定エラー (期待={expected}, 実際={is_pre})")
-'''
-    
+"""
+
     try:
-        result = subprocess.run([
-            "docker-compose", "run", "--rm",
-            "wsl-kernel-watcher",
-            "uv", "run", "python", "-c", test_script
-        ], cwd=project_root, capture_output=True, text=True, timeout=30)
-        
+        result = subprocess.run(
+            [
+                "docker-compose",
+                "run",
+                "--rm",
+                "wsl-kernel-watcher",
+                "uv",
+                "run",
+                "python",
+                "-c",
+                test_script,
+            ],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
         if result.returncode == 0:
             print(result.stdout)
             return True
         else:
             print(f"❌ プレリリース除外テスト失敗: {result.stderr}")
             return False
-            
+
     except Exception as e:
         print(f"❌ プレリリース除外テストエラー: {e}")
         return False
@@ -158,11 +194,11 @@ for release_data in test_releases:
 
 if __name__ == "__main__":
     success = True
-    
+
     success &= test_github_connection()
     success &= test_rate_limit_handling()
     success &= test_prerelease_filtering()
-    
+
     if success:
         print("\n🎉 GitHub APIテスト完了")
         sys.exit(0)

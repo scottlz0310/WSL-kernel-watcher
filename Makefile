@@ -1,4 +1,4 @@
-# WSL Kernel Watcher v2.1.0 - Docker常駐版
+# WSL Kernel Watcher v2.1.1 - Docker常駐版
 # 使用方法: make <target>
 
 .PHONY: help start stop restart build clean logs status test test-notification dev-setup lint format check-all
@@ -149,7 +149,7 @@ config: ## 現在の設定を表示
 	@echo "GITHUB_TOKEN: $$([ -n "$$GITHUB_TOKEN" ] && echo '設定済み' || echo '未設定')"
 
 version: ## バージョン情報表示
-	@echo "WSL Kernel Watcher v2.1.0 - Docker常駐版"
+	@echo "WSL Kernel Watcher v2.1.1 - Docker常駐版"
 	@echo "Docker: $$(docker --version)"
 	@echo "Docker Compose: $$(docker-compose --version)"
 

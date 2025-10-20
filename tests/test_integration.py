@@ -9,10 +9,10 @@ class TestIntegration:
     """統合テスト"""
 
     @patch("src.main.ConfigManager")
-    @patch("subprocess.run")
+    @patch("src.docker_notifier.DockerNotifier.send_notification")
     @patch("requests.Session.get")
     async def test_full_workflow_new_release(
-        self, mock_get, mock_subprocess, mock_config_manager
+        self, mock_get, mock_send_notification, mock_config_manager
     ):
         """新リリース検出から通知までの完全ワークフローテスト"""
         # 設定モック
@@ -38,8 +38,8 @@ class TestIntegration:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        # PowerShell実行モック
-        mock_subprocess.return_value = Mock(returncode=0, stderr="")
+        # 通知モック
+        mock_send_notification.return_value = True
 
         # テスト実行
         watcher = WSLKernelWatcher()
@@ -64,12 +64,13 @@ class TestIntegration:
 
         # 検証
         assert watcher.current_version == "linux-msft-wsl-5.15.96.1"
-        mock_subprocess.assert_called()
+        mock_send_notification.assert_called_once()
 
-        # PowerShellコマンドの検証
-        call_args = mock_subprocess.call_args[0][0]
-        assert "wsl.exe" in call_args
-        assert "powershell.exe" in str(call_args)
+        # 通知引数の検証
+        call_args = mock_send_notification.call_args[0]
+        assert "WSL2カーネル更新通知" in call_args[0]
+        assert "5.15.96.1" in call_args[1]
+        assert "5.15.95.1" in call_args[1]
 
     @patch("src.main.ConfigManager")
     @patch("requests.Session.get")

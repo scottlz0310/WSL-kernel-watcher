@@ -16,7 +16,7 @@ include = [
 
 [project]
 name = "wsl-kernel-watcher"
-version = "2.1.0"
+version = "2.1.1"
 description = "Docker常駐型WSL2カーネル監視ツール - WSL経由Windows通知対応"
 authors = [
     {name = "WSL Kernel Watcher Team", email = "wsl-kernel-watcher@example.com"}
@@ -114,6 +114,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["T20"]  # テストファイルではprint文を許可
 "test-*.py" = ["T20"]  # テストスクリプトではprint文を許可
+"interactive-tests/*" = ["T201", "W293", "W291"]  # インタラクティブテストではprint文と空白を許可
 
 [tool.ruff.format]
 quote-style = "double"

@@ -1,4 +1,4 @@
-# WSL Kernel Watcher v2.1.0 - Docker常駐版
+# WSL Kernel Watcher v2.1.1 - Docker常駐版
 
 Docker常駐 → WSL経由PowerShell → Windows Toast通知の新アーキテクチャ
 

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2025-01-20
+
+### Fixed
+- コード品質チェック100%通過対応
+- テストの安定性向上（ファイルシステム依存排除）
+- バージョン整合性の完全統一
+
+### Technical
+- ruff設定最適化
+- DockerNotifierテストのモック化改善
+- 統合テストの通知システムモック化
+
 ## [2.1.0] - 2025-10-20
 
 ### Added

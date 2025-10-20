@@ -8,22 +8,22 @@ from pathlib import Path
 
 def run_test(test_name: str, test_file: str) -> bool:
     """個別テスト実行"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🧪 {test_name} 実行中...")
-    print(f"{'='*60}")
-    
+    print(f"{'=' * 60}")
+
     test_path = Path(__file__).parent / test_file
-    
+
     try:
         result = subprocess.run([sys.executable, str(test_path)], timeout=300)
-        
+
         if result.returncode == 0:
             print(f"✅ {test_name} 成功")
             return True
         else:
             print(f"❌ {test_name} 失敗")
             return False
-            
+
     except subprocess.TimeoutExpired:
         print(f"⏰ {test_name} タイムアウト")
         return False
@@ -34,15 +34,15 @@ def run_test(test_name: str, test_file: str) -> bool:
 
 def main():
     """メイン実行関数"""
-    print("🚀 WSL Kernel Watcher v2.1.0 操作系テスト開始")
+    print("🚀 WSL Kernel Watcher v2.1.1 操作系テスト開始")
     print("=" * 60)
-    
+
     # インタラクティブテストの確認
     interactive_test = False
     if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
         interactive_test = True
         print("🎯 インタラクティブモード: 通知クリック確認を含みます")
-    
+
     tests = [
         ("Dockerビルド確認", "test_docker_build.py"),
         ("コンテナ起動確認", "test_container_startup.py"),
@@ -52,32 +52,34 @@ def main():
         ("完全フロー確認", "test_full_flow.py"),
         ("バージョン変更通知確認", "test_version_change.py"),
     ]
-    
+
     # インタラクティブテストを追加
     if interactive_test:
         tests.append(("インタラクティブ通知確認", "test_interactive_notification.py"))
-    
+
     results = {}
-    
+
     for test_name, test_file in tests:
         results[test_name] = run_test(test_name, test_file)
-    
+
     # 結果サマリー
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("📊 テスト結果サマリー")
-    print(f"{'='*60}")
-    
+    print(f"{'=' * 60}")
+
     success_count = 0
     total_count = len(results)
-    
+
     for test_name, success in results.items():
         status = "✅ 成功" if success else "❌ 失敗"
         print(f"{test_name}: {status}")
         if success:
             success_count += 1
-    
-    print(f"\n📈 成功率: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
-    
+
+    print(
+        f"\n📈 成功率: {success_count}/{total_count} ({success_count / total_count * 100:.1f}%)"
+    )
+
     if success_count == total_count:
         print("\n🎉 全テスト成功！")
         if not interactive_test:
