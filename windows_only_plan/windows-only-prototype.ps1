@@ -121,13 +121,17 @@ function Send-UpdateNotification {
 
 function Install-TaskScheduler {
     try {
-        $Action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-File `"$PSCommandPath`""
+        # pwshの存在確認（フォールバックとしてpowershell.exeを使用）
+        $Executor = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { "pwsh.exe" } else { "PowerShell.exe" }
+        Write-Log "タスクスケジューラ実行環境: $Executor"
+        
+        $Action = New-ScheduledTaskAction -Execute $Executor -Argument "-File `"$PSCommandPath`""
         $Trigger = New-ScheduledTaskTrigger -Daily -At "09:00"
         $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
         
         Register-ScheduledTask -TaskName $Config.TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal -Force
-        Write-Log "タスクスケジューラに登録しました: $($Config.TaskName)"
+        Write-Log "タスクスケジューラに登録しました: $($Config.TaskName) (実行環境: $Executor)"
         
         # BurntToastのインストール確認
         if (-not (Get-Module -ListAvailable -Name BurntToast)) {
