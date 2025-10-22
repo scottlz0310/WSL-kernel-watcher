@@ -126,7 +126,7 @@ function Install-TaskScheduler {
         Write-Log "タスクスケジューラ実行環境: $Executor"
         
         $Action = New-ScheduledTaskAction -Execute $Executor -Argument "-File `"$PSCommandPath`""
-        $Trigger = New-ScheduledTaskTrigger -Daily -At "09:00"
+        $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
         $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
         
