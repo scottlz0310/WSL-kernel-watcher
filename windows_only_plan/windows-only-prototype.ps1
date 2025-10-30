@@ -1,4 +1,4 @@
-# WSL Kernel Update Notifier - Windows完結型プロトタイプ
+﻿# WSL Kernel Update Notifier - Windows完結型プロトタイプ
 # 単一PowerShellスクリプトでWSLカーネル更新を監視・通知
 
 param(
@@ -126,7 +126,7 @@ function Install-TaskScheduler {
         Write-Log "タスクスケジューラ実行環境: $Executor"
         
         $Action = New-ScheduledTaskAction -Execute $Executor -Argument "-File `"$PSCommandPath`""
-        $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+        $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 2) -RepetitionDuration (New-TimeSpan -Days 9999)
         $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
         
@@ -388,7 +388,7 @@ WSL Kernel Update Notifier - Windows完結型プロトタイプ
 
 .EXAMPLE
 .\windows-only-prototype.ps1 -Install
-インストールし、毎日9:00に自動実行するよう設定
+インストールし、現在時刻より2時間おきに自動実行するよう設定
 
 .EXAMPLE
 .\windows-only-prototype.ps1 -RunTests
