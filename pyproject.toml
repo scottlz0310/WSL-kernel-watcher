@@ -26,7 +26,7 @@ maintainers = [
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 keywords = ["wsl", "kernel", "monitoring", "notification", "windows", "toast", "tray"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -38,11 +38,10 @@ classifiers = [
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: Microsoft :: Windows :: Windows 11",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Systems Administration",
     "Topic :: Utilities",
@@ -93,7 +92,7 @@ Changelog = "https://github.com/scottlz0310/WSL-kernel-watcher/blob/main/CHANGEL
 
 # Ruff設定
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 88
 
 [tool.ruff.lint]
@@ -124,7 +123,7 @@ line-ending = "auto"
 
 # MyPy設定
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
