@@ -4,7 +4,6 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -67,7 +66,7 @@ class GitHubWatcher:
         session.headers.update(headers)
         return session
 
-    def get_latest_stable_release(self) -> Optional[Release]:
+    def get_latest_stable_release(self) -> Release | None:
         """最新安定版リリース取得"""
         try:
             url = f"{self.base_url}/repos/{self.repository_url}/releases"

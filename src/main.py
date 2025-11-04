@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import sys
-from typing import Optional
 
 from .config import ConfigManager
 from .docker_notifier import DockerNotifier
@@ -26,7 +25,7 @@ class WSLKernelWatcher:
         self.config = ConfigManager.load()
         self.github_watcher = GitHubWatcher(self.config.repository_url)
         self.notifier = DockerNotifier()
-        self.current_version: Optional[str] = None
+        self.current_version: str | None = None
 
         setup_logging(self.config.log_level)
         self.logger = logging.getLogger(__name__)

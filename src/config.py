@@ -3,7 +3,6 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ class Config:
     repository_url: str = "microsoft/WSL2-Linux-Kernel"
     check_interval_minutes: int = 30
     log_level: str = "INFO"
-    github_token: Optional[str] = None
+    github_token: str | None = None
 
 
 class ConfigManager:
