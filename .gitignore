@@ -78,7 +78,7 @@ config_local.toml
 .ruff_cache/
 
 # Auto-generated entries
-uv.lock
+# uv.lock
 
 # Auto-generated entries
 .vscode/settings.json
