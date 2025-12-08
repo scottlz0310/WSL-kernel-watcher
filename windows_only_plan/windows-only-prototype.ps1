@@ -72,9 +72,9 @@ function Compare-KernelVersions {
     }
     
     try {
-        $Current = [System.Version]$CurrentVersion
-        $Latest = [System.Version]$LatestVersion
-        $IsNewer = $Latest -gt $Current
+        $CurrentVer = [System.Version]$CurrentVersion
+        $LatestVer = [System.Version]$LatestVersion
+        $IsNewer = $LatestVer -gt $CurrentVer
         Write-Log "バージョン比較: $CurrentVersion vs $LatestVersion = $IsNewer"
         return $IsNewer
     }
@@ -283,8 +283,8 @@ function Test-LogSystem {
 }
 
 function Invoke-AllTests {
-    Write-Host "\n🧪 WSL Kernel Update Notifier - 機能テスト実行" -ForegroundColor Magenta
-    Write-Host "=" * 50 -ForegroundColor Magenta
+    Write-Host "`n🧪 WSL Kernel Update Notifier - 機能テスト実行" -ForegroundColor Magenta
+    Write-Host ("=" * 50) -ForegroundColor Magenta
     
     $TestResults = @()
     $TestResults += Test-LogSystem
@@ -297,7 +297,7 @@ function Invoke-AllTests {
     $PassCount = ($TestResults | Where-Object { $_ -eq $true }).Count
     $TotalCount = $TestResults.Count
     
-    Write-Host "\n" + "=" * 50 -ForegroundColor Magenta
+    Write-Host ("`n" + ("=" * 50)) -ForegroundColor Magenta
     Write-Host "📊 テスト結果: $PassCount/$TotalCount 通過" -ForegroundColor $(if ($PassCount -eq $TotalCount) { "Green" } else { "Yellow" })
     
     if ($PassCount -eq $TotalCount) {
