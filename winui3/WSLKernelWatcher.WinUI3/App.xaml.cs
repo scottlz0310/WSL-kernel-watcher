@@ -6,7 +6,7 @@ namespace WSLKernelWatcher.WinUI3;
 
 public partial class App : Application
 {
-    private Window? _window;
+    private MainWindow? _window;
     private readonly NotificationService _notificationService = new();
     private readonly LoggingService _loggingService = new();
     private readonly KernelWatcherService _watcherService;
@@ -22,9 +22,19 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow(_watcherService, _loggingService);
+        // Check for command-line arguments
+        var commandLineArgs = Environment.GetCommandLineArgs();
+        bool showWindow = !commandLineArgs.Contains("--tray") && !commandLineArgs.Contains("-t");
+
+        _window = new MainWindow(_watcherService, _loggingService, showWindow);
         _window.Closed += OnWindowClosed;
-        _window.Activate();
+
+        // Activate window if it should be shown
+        if (showWindow)
+        {
+            _window.Activate();
+        }
+
         _watcherService.Start();
     }
 
@@ -35,6 +45,10 @@ public partial class App : Application
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
-        // Placeholder for activation actions (e.g., open release page)
+        // Show window when notification is clicked
+        if (_window != null)
+        {
+            _window.DispatcherQueue.TryEnqueue(() => _window.ShowWindowFromTray());
+        }
     }
 }
