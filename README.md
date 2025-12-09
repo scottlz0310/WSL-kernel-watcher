@@ -90,6 +90,40 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 
 ## 開発
 
+### 開発環境のセットアップ
+
+初回のみ、開発環境をセットアップしてください:
+
+```powershell
+# pre-commitフックとNuGetパッケージをセットアップ
+.\scripts\setup-dev.ps1
+```
+
+このスクリプトは以下を実行します:
+- pre-commitのインストール（Pythonが必要）
+- Gitフックの設定（コミット時・プッシュ時のチェック）
+- NuGetパッケージの復元
+
+### Pre-commitフック
+
+pre-commitフックにより、以下のチェックが自動実行されます:
+
+**コミット時**:
+- コードフォーマットチェック（dotnet format）
+- ビルドチェック（警告をエラー扱い）
+- ファイル末尾の空白削除
+- 大きなファイルの検出
+
+**プッシュ時**:
+- ユニットテスト実行
+- コードカバレッジチェック（80%必須）
+
+フックを一時的にスキップする場合:
+```powershell
+git commit --no-verify
+git push --no-verify
+```
+
 ### テストの実行
 
 ```powershell

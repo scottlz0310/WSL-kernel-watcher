@@ -1,0 +1,47 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+        exclude: '\.(svg|png|jpg|ico)$'
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=crlf']
+
+  - repo: https://github.com/sirosen/texthooks
+    rev: 0.6.3
+    hooks:
+      - id: fix-smartquotes
+      - id: fix-ligatures
+
+  - repo: local
+    hooks:
+      - id: dotnet-format
+        name: dotnet format
+        entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-format.ps1
+        language: system
+        types: [c-sharp]
+        pass_filenames: false
+
+      - id: dotnet-build
+        name: dotnet build
+        entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-build.ps1
+        language: system
+        pass_filenames: false
+        stages: [commit]
+
+      - id: dotnet-test
+        name: dotnet test
+        entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-test.ps1
+        language: system
+        pass_filenames: false
+        stages: [push]

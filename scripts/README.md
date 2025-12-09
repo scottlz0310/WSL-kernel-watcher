@@ -1,6 +1,29 @@
-# Installation Scripts
+# Scripts
 
-このディレクトリには、WSL Kernel Watcherをタスクスケジューラに登録・削除するためのPowerShellスクリプトが含まれています。
+このディレクトリには、WSL Kernel Watcherのインストール・開発環境セットアップ用のPowerShellスクリプトが含まれています。
+
+## 開発者向けスクリプト
+
+### setup-dev.ps1
+
+開発環境をセットアップします。
+
+```powershell
+.\scripts\setup-dev.ps1
+```
+
+**機能**:
+- pre-commitのインストール
+- Gitフックの設定（コミット時・プッシュ時のチェック）
+- NuGetパッケージの復元
+
+**必要環境**:
+- Python 3.8以降（pre-commit用）
+- .NET 8.0 SDK
+
+---
+
+## エンドユーザー向けスクリプト
 
 ## install.ps1
 
