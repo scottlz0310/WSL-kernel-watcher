@@ -1,1 +1,0 @@
-C:\Users\jojob\workspace\WSL-kernel-watcher\winui3\WSLKernelWatcher.WinUI3\obj\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.csproj.AssemblyReference.cache
