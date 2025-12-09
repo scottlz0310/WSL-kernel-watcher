@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "dgSpecHash": "NAsofNt2tNY=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\jojob\\workspace\\WSL-kernel-watcher\\winui3\\WSLKernelWatcher.WinUI3\\WSLKernelWatcher.WinUI3.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\jojob\\.nuget\\packages\\communitytoolkit.winui.notifications\\7.1.2\\communitytoolkit.winui.notifications.7.1.2.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.netcore.platforms\\3.1.0\\microsoft.netcore.platforms.3.1.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.web.webview2\\1.0.2903.40\\microsoft.web.webview2.1.0.2903.40.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.win32.registry\\4.7.0\\microsoft.win32.registry.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.win32.systemevents\\4.7.0\\microsoft.win32.systemevents.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windows.sdk.buildtools\\10.0.26100.1\\microsoft.windows.sdk.buildtools.10.0.26100.1.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windowsappsdk\\1.7.251107005\\microsoft.windowsappsdk.1.7.251107005.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\system.drawing.common\\4.7.0\\system.drawing.common.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\system.reflection.emit\\4.7.0\\system.reflection.emit.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\system.security.accesscontrol\\4.7.0\\system.security.accesscontrol.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\system.security.principal.windows\\4.7.0\\system.security.principal.windows.4.7.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\system.valuetuple\\4.5.0\\system.valuetuple.4.5.0.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x86\\8.0.22\\microsoft.netcore.app.runtime.win-x86.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.22\\microsoft.netcore.app.runtime.win-x64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.netcore.app.runtime.win-arm64\\8.0.22\\microsoft.netcore.app.runtime.win-arm64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x86\\8.0.22\\microsoft.windowsdesktop.app.runtime.win-x86.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.22\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-arm64\\8.0.22\\microsoft.windowsdesktop.app.runtime.win-arm64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x86\\8.0.22\\microsoft.aspnetcore.app.runtime.win-x86.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.22\\microsoft.aspnetcore.app.runtime.win-x64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-arm64\\8.0.22\\microsoft.aspnetcore.app.runtime.win-arm64.8.0.22.nupkg.sha512",
+    "C:\\Users\\jojob\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.26100.38\\microsoft.windows.sdk.net.ref.10.0.26100.38.nupkg.sha512"
+  ],
+  "logs": []
+}
