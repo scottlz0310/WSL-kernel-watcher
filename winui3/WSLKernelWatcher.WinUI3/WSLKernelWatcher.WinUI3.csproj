@@ -17,8 +17,11 @@
     <WindowsSdkPackageVersion>10.0.26100.38</WindowsSdkPackageVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest</AnalysisLevel>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <NoWarn>$(NoWarn);CA1014;CA1031;CA1303;CA1848</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

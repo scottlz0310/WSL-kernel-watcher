@@ -98,16 +98,27 @@ dotnet test winui3/WSLKernelWatcher.WinUI3.sln
 
 ### コード品質
 
-プロジェクトには以下のツールが組み込まれています:
+プロジェクトには厳格な品質基準が設定されています:
 
+#### 静的解析
 - **StyleCop.Analyzers**: コードスタイルのチェック
 - **Roslynator.Analyzers**: コード品質の分析
+- **Microsoft.CodeAnalysis.NetAnalyzers**: .NET公式アナライザー
 - **SecurityCodeScan**: セキュリティ脆弱性のスキャン
 - **CodeQL**: GitHubセキュリティスキャン
+- **TreatWarningsAsErrors**: すべての警告をエラーとして扱う
 
-### コードフォーマット
+#### コードカバレッジ
+- **目標カバレッジ**: 80%（行、分岐、メソッド）
+- **Codecov統合**: PRごとにカバレッジレポート生成
+- **自動生成コードを除外**: `*.g.cs`, `*.xaml.cs`
+
+#### コードフォーマット
+- **.editorconfig**: C#コーディング規約を強制
+- **dotnet format**: CI時に自動フォーマットチェック
 
 ```powershell
+# コードフォーマットの実行
 dotnet format winui3/WSLKernelWatcher.WinUI3.sln
 ```
 
@@ -116,8 +127,12 @@ dotnet format winui3/WSLKernelWatcher.WinUI3.sln
 GitHub Actionsを使用した自動ビルド・テスト・リリースを実装しています:
 
 - **CI**: プッシュ・PR時に自動ビルド・テスト・コード分析
+  - ビルド（Release構成、警告をエラー扱い）
+  - ユニットテスト（80%カバレッジ必須）
+  - Lint（dotnet format）
+  - セキュリティスキャン（CodeQL + SecurityCodeScan）
 - **Release**: タグプッシュ時に自動リリース（x64, ARM64）
-- **Dependabot**: 依存関係の自動更新
+- **Renovate**: 依存関係の自動更新（週次）
 
 ## ライセンス
 

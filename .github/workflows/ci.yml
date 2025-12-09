@@ -32,18 +32,20 @@ jobs:
     - name: Build solution
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
 
-    - name: Run tests
-      run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+    - name: Run tests with coverage
+      run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Threshold=80 /p:ThresholdType=line,branch,method
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
         directory: ./coverage
-        fail_ci_if_error: false
+        fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }}
+        flags: unittests
+        name: codecov-umbrella
 
     - name: Code Analysis
-      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:CodeAnalysisTreatWarningsAsErrors=false
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
 
   lint:
     runs-on: windows-latest
@@ -62,6 +64,7 @@ jobs:
 
     - name: Run dotnet format
       run: dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --verbosity diagnostic
+      continue-on-error: false
 
   security-scan:
     runs-on: windows-latest
