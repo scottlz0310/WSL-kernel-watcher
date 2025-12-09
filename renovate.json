@@ -2,9 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>scottlz0310/renovate-config",
-    "github>scottlz0310/renovate-config:python",
-    "github>scottlz0310/renovate-config:docker",
+    "github>scottlz0310/renovate-config:csharp",
+    "github>scottlz0310/renovate-config:cpp",
     "github>scottlz0310/renovate-config:security"
   ]
 }
-
