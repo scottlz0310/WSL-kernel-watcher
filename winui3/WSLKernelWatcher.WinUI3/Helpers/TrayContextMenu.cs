@@ -1,19 +1,23 @@
+// <copyright file="TrayContextMenu.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using System.Runtime.InteropServices;
 
 namespace WSLKernelWatcher.WinUI3.Helpers;
 
 public class TrayContextMenu : IDisposable
 {
-    private const int MF_STRING = 0x00000000;
-    private const int MF_SEPARATOR = 0x00000800;
-    private const int TPM_LEFTALIGN = 0x0000;
-    private const int TPM_BOTTOMALIGN = 0x0020;
-    private const int TPM_RETURNCMD = 0x0100;
-    private const int WM_COMMAND = 0x0111;
+    private const int MFSTRING = 0x00000000;
+    private const int MFSEPARATOR = 0x00000800;
+    private const int TPMLEFTALIGN = 0x0000;
+    private const int TPMBOTTOMALIGN = 0x0020;
+    private const int TPMRETURNCMD = 0x0100;
+    private const int WMCOMMAND = 0x0111;
 
-    private nint _hMenu;
-    private readonly Dictionary<int, Action> _menuActions = new();
-    private int _nextCommandId = 1000; // Start from 1000 to avoid conflicts
+    private nint hMenu;
+    private readonly Dictionary<int, Action> menuActions = new();
+    private int nextCommandId = 1000; // Start from 1000 to avoid conflicts
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint CreatePopupMenu();
@@ -36,7 +40,7 @@ public class TrayContextMenu : IDisposable
     [DllImport("user32.dll")]
     private static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
 
-    private const uint WM_NULL = 0x0000;
+    private const uint WMNULL = 0x0000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
@@ -47,19 +51,19 @@ public class TrayContextMenu : IDisposable
 
     public TrayContextMenu()
     {
-        _hMenu = CreatePopupMenu();
+        this.hMenu = CreatePopupMenu();
     }
 
     public void AddMenuItem(string text, Action action)
     {
-        int commandId = _nextCommandId++;
-        AppendMenu(_hMenu, MF_STRING, new nint(commandId), text);
-        _menuActions[commandId] = action;
+        int commandId = this.nextCommandId++;
+        AppendMenu(this.hMenu, MFSTRING, new nint(commandId), text);
+        this.menuActions[commandId] = action;
     }
 
     public void AddSeparator()
     {
-        AppendMenu(_hMenu, MF_SEPARATOR, nint.Zero, string.Empty);
+        AppendMenu(this.hMenu, MFSEPARATOR, nint.Zero, string.Empty);
     }
 
     public void Show(nint hwnd)
@@ -68,12 +72,12 @@ public class TrayContextMenu : IDisposable
         GetCursorPos(out POINT pt);
 
         // TPM_RETURNCMD makes TrackPopupMenu return the selected command ID directly
-        int selectedId = TrackPopupMenu(_hMenu, TPM_LEFTALIGN | TPM_BOTTOMALIGN | TPM_RETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
+        int selectedId = TrackPopupMenu(this.hMenu, TPMLEFTALIGN | TPMBOTTOMALIGN | TPMRETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
 
         // Post a message to ensure the menu is properly closed
-        PostMessage(hwnd, WM_NULL, nint.Zero, nint.Zero);
+        PostMessage(hwnd, WMNULL, nint.Zero, nint.Zero);
 
-        if (selectedId > 0 && _menuActions.TryGetValue(selectedId, out var action))
+        if (selectedId > 0 && this.menuActions.TryGetValue(selectedId, out Action? action))
         {
             action?.Invoke();
         }
@@ -81,20 +85,21 @@ public class TrayContextMenu : IDisposable
 
     public bool ProcessCommand(int commandId)
     {
-        if (_menuActions.TryGetValue(commandId, out var action))
+        if (this.menuActions.TryGetValue(commandId, out Action? action))
         {
             action?.Invoke();
             return true;
         }
+
         return false;
     }
 
     public void Dispose()
     {
-        if (_hMenu != nint.Zero)
+        if (this.hMenu != nint.Zero)
         {
-            DestroyMenu(_hMenu);
-            _hMenu = nint.Zero;
+            DestroyMenu(this.hMenu);
+            this.hMenu = nint.Zero;
         }
     }
 }

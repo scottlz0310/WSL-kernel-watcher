@@ -28,7 +28,7 @@ public class SettingsServiceTests : IDisposable
     public void Settings_ShouldHaveDefaultValues()
     {
         // Arrange & Act
-        var settings = _settingsService.Settings;
+        AppSettings settings = _settingsService.Settings;
 
         // Assert
         settings.CheckIntervalHours.Should().Be(2);
@@ -55,7 +55,7 @@ public class SettingsServiceTests : IDisposable
     public void UpdateCheckInterval_ShouldThrowForInvalidValues(int invalidInterval)
     {
         // Act & Assert
-        var act = () => _settingsService.UpdateCheckInterval(invalidInterval);
+        Action act = () => _settingsService.UpdateCheckInterval(invalidInterval);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -66,7 +66,7 @@ public class SettingsServiceTests : IDisposable
     public void UpdateCheckInterval_ShouldAcceptValidValues(int validInterval)
     {
         // Act
-        var act = () => _settingsService.UpdateCheckInterval(validInterval);
+        Action act = () => _settingsService.UpdateCheckInterval(validInterval);
 
         // Assert
         act.Should().NotThrow();
@@ -77,7 +77,7 @@ public class SettingsServiceTests : IDisposable
     public void SettingsChanged_ShouldBeRaisedWhenSettingsUpdated()
     {
         // Arrange
-        var eventRaised = false;
+        bool eventRaised = false;
         _settingsService.SettingsChanged += (_, _) => eventRaised = true;
 
         // Act

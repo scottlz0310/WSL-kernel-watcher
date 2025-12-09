@@ -1,3 +1,7 @@
+// <copyright file="KernelWatcherService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using System.Diagnostics;
 using System.Net.Http;
 using System.Text.Json;
@@ -7,68 +11,68 @@ namespace WSLKernelWatcher.WinUI3.Services;
 
 public sealed class KernelWatcherService : IAsyncDisposable
 {
-    private readonly TimeSpan _interval;
-    private readonly HttpClient _httpClient;
-    private readonly NotificationService _notificationService;
-    private readonly LoggingService _loggingService;
-    private readonly CancellationTokenSource _cts = new();
-    private Task? _loopTask;
+    private readonly TimeSpan interval;
+    private readonly HttpClient httpClient;
+    private readonly NotificationService notificationService;
+    private readonly LoggingService loggingService;
+    private readonly CancellationTokenSource cts = new();
+    private Task? loopTask;
     private static readonly Regex VersionRegex = new("(\\d+\\.\\d+\\.\\d+\\.\\d+)", RegexOptions.Compiled);
 
     public event EventHandler<string>? StatusChanged;
 
     public KernelWatcherService(NotificationService notificationService, LoggingService loggingService, TimeSpan? interval = null)
     {
-        _interval = interval ?? TimeSpan.FromHours(2);
-        _notificationService = notificationService;
-        _loggingService = loggingService;
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WSL-Kernel-Watcher-WinUI3/0.1");
+        this.interval = interval ?? TimeSpan.FromHours(2);
+        this.notificationService = notificationService;
+        this.loggingService = loggingService;
+        this.httpClient = new HttpClient();
+        this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WSL-Kernel-Watcher-WinUI3/0.1");
     }
 
     public void Start()
     {
-        _loopTask ??= Task.Run(() => RunAsync(_cts.Token));
+        this.loopTask ??= Task.Run(() => this.RunAsync(this.cts.Token));
     }
 
     public async Task CheckOnceAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await ReportStatusAsync("Checking kernel versions...").ConfigureAwait(false);
-            var current = await GetCurrentKernelVersionAsync(cancellationToken).ConfigureAwait(false);
-            var latest = await GetLatestKernelVersionAsync(cancellationToken).ConfigureAwait(false);
+            await this.ReportStatusAsync("Checking kernel versions...").ConfigureAwait(false);
+            string? current = await GetCurrentKernelVersionAsync(cancellationToken).ConfigureAwait(false);
+            string? latest = await this.GetLatestKernelVersionAsync(cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(current) || string.IsNullOrWhiteSpace(latest))
             {
-                await ReportStatusAsync("Unable to determine versions (WSL or GitHub API failed)").ConfigureAwait(false);
+                await this.ReportStatusAsync("Unable to determine versions (WSL or GitHub API failed)").ConfigureAwait(false);
                 return;
             }
 
-            await ReportStatusAsync($"Current: {current} | Latest: {latest}").ConfigureAwait(false);
+            await this.ReportStatusAsync($"Current: {current} | Latest: {latest}").ConfigureAwait(false);
 
             if (IsLatestNewer(latest, current))
             {
-                await ReportStatusAsync("Newer kernel detected. Sending notification.").ConfigureAwait(false);
-                _notificationService.NotifyUpdateAvailable(current, latest);
+                await this.ReportStatusAsync("Newer kernel detected. Sending notification.").ConfigureAwait(false);
+                this.notificationService.NotifyUpdateAvailable(current, latest);
             }
             else
             {
-                await ReportStatusAsync("Already up to date.").ConfigureAwait(false);
+                await this.ReportStatusAsync("Already up to date.").ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
-            await ReportStatusAsync($"Error: {ex.Message}").ConfigureAwait(false);
+            await this.ReportStatusAsync($"Error: {ex.Message}").ConfigureAwait(false);
         }
     }
 
     private async Task RunAsync(CancellationToken token)
     {
-        using var timer = new PeriodicTimer(_interval);
+        using var timer = new PeriodicTimer(this.interval);
         while (!token.IsCancellationRequested)
         {
-            await CheckOnceAsync(token).ConfigureAwait(false);
+            await this.CheckOnceAsync(token).ConfigureAwait(false);
             try
             {
                 await timer.WaitForNextTickAsync(token).ConfigureAwait(false);
@@ -97,8 +101,8 @@ public sealed class KernelWatcherService : IAsyncDisposable
             using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
             process.Start();
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var _ = process.StandardError.ReadToEndAsync();
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> _ = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync(token).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
@@ -106,7 +110,7 @@ public sealed class KernelWatcherService : IAsyncDisposable
                 return null;
             }
 
-            var output = await outputTask.ConfigureAwait(false);
+            string output = await outputTask.ConfigureAwait(false);
             return output.Trim();
         }
         catch
@@ -120,15 +124,15 @@ public sealed class KernelWatcherService : IAsyncDisposable
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/microsoft/WSL2-Linux-Kernel/releases/latest");
-            var response = await _httpClient.SendAsync(request, token).ConfigureAwait(false);
+            HttpResponseMessage response = await this.httpClient.SendAsync(request, token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+            string content = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(content);
-            if (!doc.RootElement.TryGetProperty("tag_name", out var tag))
+            if (!doc.RootElement.TryGetProperty("tag_name", out JsonElement tag))
             {
                 return null;
             }
@@ -143,19 +147,19 @@ public sealed class KernelWatcherService : IAsyncDisposable
 
     private static bool IsLatestNewer(string latest, string current)
     {
-        var currentMatch = VersionRegex.Match(current);
-        var latestMatch = VersionRegex.Match(latest);
+        Match currentMatch = VersionRegex.Match(current);
+        Match latestMatch = VersionRegex.Match(latest);
         if (!currentMatch.Success || !latestMatch.Success)
         {
             return false;
         }
 
-        if (!Version.TryParse(currentMatch.Groups[1].Value, out var currentVer))
+        if (!Version.TryParse(currentMatch.Groups[1].Value, out Version? currentVer))
         {
             return false;
         }
 
-        if (!Version.TryParse(latestMatch.Groups[1].Value, out var latestVer))
+        if (!Version.TryParse(latestMatch.Groups[1].Value, out Version? latestVer))
         {
             return false;
         }
@@ -165,19 +169,19 @@ public sealed class KernelWatcherService : IAsyncDisposable
 
     private async Task ReportStatusAsync(string message)
     {
-        StatusChanged?.Invoke(this, message);
-        await _loggingService.WriteAsync(message).ConfigureAwait(false);
+        this.StatusChanged?.Invoke(this, message);
+        await this.loggingService.WriteAsync(message).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
-        _cts.Cancel();
-        _httpClient.Dispose();
-        if (_loopTask is not null)
+        this.cts.Cancel();
+        this.httpClient.Dispose();
+        if (this.loopTask is not null)
         {
             try
             {
-                await _loopTask.ConfigureAwait(false);
+                await this.loopTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -185,6 +189,6 @@ public sealed class KernelWatcherService : IAsyncDisposable
             }
         }
 
-        _cts.Dispose();
+        this.cts.Dispose();
     }
 }

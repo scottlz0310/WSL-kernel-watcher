@@ -1,3 +1,7 @@
+// <copyright file="App.xaml.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using WSLKernelWatcher.WinUI3.Services;
@@ -6,53 +10,53 @@ namespace WSLKernelWatcher.WinUI3;
 
 public partial class App : Application
 {
-    private MainWindow? _window;
-    private readonly NotificationService _notificationService = new();
-    private readonly LoggingService _loggingService = new();
-    private readonly SettingsService _settingsService = new();
-    private readonly KernelWatcherService _watcherService;
+    private MainWindow? window;
+    private readonly NotificationService notificationService = new();
+    private readonly LoggingService loggingService = new();
+    private readonly SettingsService settingsService = new();
+    private readonly KernelWatcherService watcherService;
 
     public App()
     {
         InitializeComponent();
-        AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
+        AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
         AppNotificationManager.Default.Register();
-        _notificationService.Initialize();
+        this.notificationService.Initialize();
 
         // Create watcher service with settings
-        var interval = TimeSpan.FromHours(_settingsService.Settings.CheckIntervalHours);
-        _watcherService = new KernelWatcherService(_notificationService, _loggingService, interval);
+        var interval = TimeSpan.FromHours(this.settingsService.Settings.CheckIntervalHours);
+        this.watcherService = new KernelWatcherService(this.notificationService, this.loggingService, interval);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Check for command-line arguments
-        var commandLineArgs = Environment.GetCommandLineArgs();
+        string[] commandLineArgs = Environment.GetCommandLineArgs();
         bool showWindow = !commandLineArgs.Contains("--tray") && !commandLineArgs.Contains("-t");
 
-        _window = new MainWindow(_watcherService, _loggingService, _settingsService, showWindow);
-        _window.Closed += OnWindowClosed;
+        this.window = new MainWindow(this.watcherService, this.loggingService, this.settingsService, showWindow);
+        this.window.Closed += this.OnWindowClosed;
 
         // Activate window if it should be shown
         if (showWindow)
         {
-            _window.Activate();
+            this.window.Activate();
         }
 
-        _watcherService.Start();
+        this.watcherService.Start();
     }
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        _watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
+        this.watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
     }
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
         // Show window when notification is clicked
-        if (_window != null)
+        if (this.window != null)
         {
-            _window.DispatcherQueue.TryEnqueue(() => _window.ShowWindowFromTray());
+            this.window.DispatcherQueue.TryEnqueue(() => this.window.ShowWindowFromTray());
         }
     }
 }

@@ -1,3 +1,7 @@
+// <copyright file="NotificationService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using System.Diagnostics;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
@@ -6,24 +10,24 @@ namespace WSLKernelWatcher.WinUI3.Services;
 
 public sealed class NotificationService
 {
-    private bool _initialized;
+    private bool initialized;
 
     public void Initialize()
     {
-        if (_initialized)
+        if (this.initialized)
         {
             return;
         }
 
-        AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
-        _initialized = true;
+        AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
+        this.initialized = true;
     }
 
     public void NotifyUpdateAvailable(string current, string latest)
     {
         try
         {
-            var builder = new AppNotificationBuilder()
+            AppNotificationBuilder builder = new AppNotificationBuilder()
                 .AddText("WSL2 kernel update available")
                 .AddText($"Current: {current}")
                 .AddText($"Latest: {latest}")
@@ -31,7 +35,7 @@ public sealed class NotificationService
                     .AddArgument("action", "open_release")
                     .AddArgument("version", latest));
 
-            var notification = builder.BuildNotification();
+            AppNotification notification = builder.BuildNotification();
             AppNotificationManager.Default.Show(notification);
         }
         catch
@@ -42,14 +46,14 @@ public sealed class NotificationService
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
-        if (!args.Arguments.TryGetValue("action", out var action))
+        if (!args.Arguments.TryGetValue("action", out string? action))
         {
             return;
         }
 
-        if (action == "open_release" && args.Arguments.TryGetValue("version", out var version))
+        if (action == "open_release" && args.Arguments.TryGetValue("version", out string? version))
         {
-            var url = $"https://github.com/microsoft/WSL2-Linux-Kernel/releases/tag/{version}";
+            string url = $"https://github.com/microsoft/WSL2-Linux-Kernel/releases/tag/{version}";
             TryOpenUrl(url);
         }
     }

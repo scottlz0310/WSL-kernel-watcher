@@ -1,34 +1,38 @@
+// <copyright file="SettingsService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 using System.Text.Json;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
 public class SettingsService
 {
-    private readonly string _settingsPath;
-    private AppSettings _settings;
+    private readonly string settingsPath;
+    private readonly AppSettings settings;
 
-    public AppSettings Settings => _settings;
+    public AppSettings Settings => this.settings;
 
     public event EventHandler? SettingsChanged;
 
     public SettingsService()
     {
-        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var appFolder = Path.Combine(appDataPath, "WSLKernelWatcher");
+        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string appFolder = Path.Combine(appDataPath, "WSLKernelWatcher");
         Directory.CreateDirectory(appFolder);
-        _settingsPath = Path.Combine(appFolder, "settings.json");
+        this.settingsPath = Path.Combine(appFolder, "settings.json");
 
-        _settings = LoadSettings();
+        this.settings = this.LoadSettings();
     }
 
     private AppSettings LoadSettings()
     {
         try
         {
-            if (File.Exists(_settingsPath))
+            if (File.Exists(this.settingsPath))
             {
-                var json = File.ReadAllText(_settingsPath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                string json = File.ReadAllText(this.settingsPath);
+                AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(json);
                 if (settings != null)
                 {
                     return settings;
@@ -47,12 +51,12 @@ public class SettingsService
     {
         try
         {
-            var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
+            string json = JsonSerializer.Serialize(this.settings, new JsonSerializerOptions
             {
-                WriteIndented = true
+                WriteIndented = true,
             });
-            File.WriteAllText(_settingsPath, json);
-            SettingsChanged?.Invoke(this, EventArgs.Empty);
+            File.WriteAllText(this.settingsPath, json);
+            this.SettingsChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
@@ -67,8 +71,8 @@ public class SettingsService
             throw new ArgumentOutOfRangeException(nameof(hours), "Check interval must be between 1 and 24 hours");
         }
 
-        _settings.CheckIntervalHours = hours;
-        SaveSettings();
+        this.settings.CheckIntervalHours = hours;
+        this.SaveSettings();
     }
 }
 
