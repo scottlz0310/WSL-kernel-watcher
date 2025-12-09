@@ -8,10 +8,12 @@ public class TrayContextMenu : IDisposable
     private const int MF_SEPARATOR = 0x00000800;
     private const int TPM_LEFTALIGN = 0x0000;
     private const int TPM_BOTTOMALIGN = 0x0020;
+    private const int TPM_RETURNCMD = 0x0100;
+    private const int WM_COMMAND = 0x0111;
 
     private nint _hMenu;
     private readonly Dictionary<int, Action> _menuActions = new();
-    private int _nextCommandId = 1;
+    private int _nextCommandId = 1000; // Start from 1000 to avoid conflicts
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint CreatePopupMenu();
@@ -30,6 +32,11 @@ public class TrayContextMenu : IDisposable
 
     [DllImport("user32.dll")]
     private static extern bool DestroyMenu(nint hMenu);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+
+    private const uint WM_NULL = 0x0000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
@@ -60,12 +67,26 @@ public class TrayContextMenu : IDisposable
         SetForegroundWindow(hwnd);
         GetCursorPos(out POINT pt);
 
-        int selectedId = TrackPopupMenu(_hMenu, TPM_LEFTALIGN | TPM_BOTTOMALIGN, pt.X, pt.Y, 0, hwnd, nint.Zero);
+        // TPM_RETURNCMD makes TrackPopupMenu return the selected command ID directly
+        int selectedId = TrackPopupMenu(_hMenu, TPM_LEFTALIGN | TPM_BOTTOMALIGN | TPM_RETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
+
+        // Post a message to ensure the menu is properly closed
+        PostMessage(hwnd, WM_NULL, nint.Zero, nint.Zero);
 
         if (selectedId > 0 && _menuActions.TryGetValue(selectedId, out var action))
         {
             action?.Invoke();
         }
+    }
+
+    public bool ProcessCommand(int commandId)
+    {
+        if (_menuActions.TryGetValue(commandId, out var action))
+        {
+            action?.Invoke();
+            return true;
+        }
+        return false;
     }
 
     public void Dispose()

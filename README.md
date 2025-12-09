@@ -1,11 +1,19 @@
 # WSL Kernel Watcher
+
+[![CI](https://github.com/YOUR_USERNAME/WSL-kernel-watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/WSL-kernel-watcher/actions/workflows/ci.yml)
+[![Release](https://github.com/YOUR_USERNAME/WSL-kernel-watcher/actions/workflows/release.yml/badge.svg)](https://github.com/YOUR_USERNAME/WSL-kernel-watcher/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher)
+
 WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカーネルバージョンを監視し、更新があった場合に通知を行う常駐型軽量アプリケーションです。
 
 ## 機能
 
-- WSLカーネルバージョンの定期監視
+- WSLカーネルバージョンの定期監視（1〜24時間で設定可能）
 - カーネル更新時のトースト通知
 - ログファイルへの記録
+- システムトレイ常駐
+- カスタマイズ可能な更新確認間隔
 
 ## WinUI3版
 
@@ -33,14 +41,83 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 
 > **注意:** `dotnet build` は WinUI3 に必要な MSBuild タスクが不足しているため使用できません。
 
-### 起動方法
+### インストール（自動起動設定）
+
+ビルド後、タスクスケジューラに登録して自動起動できます:
+
+```powershell
+# 標準インストール（ログイン時にウィンドウ表示）
+.\scripts\install.ps1
+
+# トレイに最小化してインストール（推奨）
+.\scripts\install.ps1 -StartMinimized
+
+# カスタムパスを指定してインストール
+.\scripts\install.ps1 -ExePath "C:\Path\To\WSLKernelWatcher.WinUI3.exe" -StartMinimized
+```
+
+インストールすると、次回のログインから自動的に起動します。
+
+### アンインストール
+
+```powershell
+# タスクと設定を削除
+.\scripts\uninstall.ps1
+
+# タスクのみ削除（設定は保持）
+.\scripts\uninstall.ps1 -KeepSettings
+```
+
+### 手動起動
 
 ```powershell
 # ビルド後の実行ファイルを起動
 .\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe
+
+# トレイに最小化して起動
+.\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe --tray
 ```
 
 または、Visual Studioから `F5` でデバッグ実行できます。
+
+### 設定
+
+アプリケーションを起動後、「Settings」セクションから以下の設定が可能です:
+
+- **Check interval (hours)**: 更新確認の間隔（1〜24時間）
+
+設定は `%LocalAppData%\WSLKernelWatcher\settings.json` に保存されます。
+
+## 開発
+
+### テストの実行
+
+```powershell
+dotnet test winui3/WSLKernelWatcher.WinUI3.sln
+```
+
+### コード品質
+
+プロジェクトには以下のツールが組み込まれています:
+
+- **StyleCop.Analyzers**: コードスタイルのチェック
+- **Roslynator.Analyzers**: コード品質の分析
+- **SecurityCodeScan**: セキュリティ脆弱性のスキャン
+- **CodeQL**: GitHubセキュリティスキャン
+
+### コードフォーマット
+
+```powershell
+dotnet format winui3/WSLKernelWatcher.WinUI3.sln
+```
+
+## CI/CD
+
+GitHub Actionsを使用した自動ビルド・テスト・リリースを実装しています:
+
+- **CI**: プッシュ・PR時に自動ビルド・テスト・コード分析
+- **Release**: タグプッシュ時に自動リリース（x64, ARM64）
+- **Dependabot**: 依存関係の自動更新
 
 ## ライセンス
 

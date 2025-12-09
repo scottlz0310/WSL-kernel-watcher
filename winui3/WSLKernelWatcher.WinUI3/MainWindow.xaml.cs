@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly KernelWatcherService _service;
     private readonly LoggingService _loggingService;
+    private readonly SettingsService _settingsService;
     private readonly ObservableCollection<string> _logEntries = new();
     private readonly TrayIconService _trayIconService;
     private TrayContextMenu? _contextMenu;
@@ -32,11 +33,23 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(nint hWnd, int nCmdShow);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint LoadImage(nint hInst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
+
+    [DllImport("user32.dll")]
+    private static extern nint SendMessage(nint hWnd, uint msg, nint wParam, nint lParam);
+
     private const int GWL_WNDPROC = -4;
     private const int SW_HIDE = 0;
     private const int SW_SHOW = 5;
+    private const uint WM_SETICON = 0x0080;
+    private const uint WM_COMMAND = 0x0111;
+    private const uint ICON_SMALL = 0;
+    private const uint ICON_BIG = 1;
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x00000010;
 
-    public MainWindow(KernelWatcherService service, LoggingService loggingService, bool showWindow = true)
+    public MainWindow(KernelWatcherService service, LoggingService loggingService, SettingsService settingsService, bool showWindow = true)
     {
         InitializeComponent();
 
@@ -46,11 +59,18 @@ public sealed partial class MainWindow : Window
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
         appWindow.Resize(new SizeInt32(520, 360));
 
+        // Set window icon
+        SetWindowIcon();
+
         _service = service;
         _loggingService = loggingService;
+        _settingsService = settingsService;
         _service.StatusChanged += OnStatusChanged;
         _loggingService.LogAppended += OnLogAppended;
         LogList.ItemsSource = _logEntries;
+
+        // Load settings
+        CheckIntervalBox.Value = _settingsService.Settings.CheckIntervalHours;
 
         // Setup tray icon
         _trayIconService = new TrayIconService(this);
@@ -74,6 +94,16 @@ public sealed partial class MainWindow : Window
         // Process tray icon messages
         _trayIconService?.ProcessWindowMessage(msg, wParam, lParam);
 
+        // Process WM_COMMAND messages for context menu
+        if (msg == WM_COMMAND)
+        {
+            int commandId = wParam.ToInt32() & 0xFFFF;
+            if (_contextMenu?.ProcessCommand(commandId) == true)
+            {
+                return nint.Zero;
+            }
+        }
+
         // Call original window procedure
         return CallWindowProc(_oldWndProc, hWnd, msg, wParam, lParam);
     }
@@ -87,6 +117,33 @@ public sealed partial class MainWindow : Window
     public void HideWindowToTray()
     {
         ShowWindow(_hwnd, SW_HIDE);
+    }
+
+    private void SetWindowIcon()
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsl_watcher_icon.ico");
+            if (File.Exists(iconPath))
+            {
+                var hIconSmall = LoadImage(nint.Zero, iconPath, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+                var hIconBig = LoadImage(nint.Zero, iconPath, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+
+                if (hIconSmall != nint.Zero)
+                {
+                    SendMessage(_hwnd, WM_SETICON, new nint(ICON_SMALL), hIconSmall);
+                }
+
+                if (hIconBig != nint.Zero)
+                {
+                    SendMessage(_hwnd, WM_SETICON, new nint(ICON_BIG), hIconBig);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors when loading icon
+        }
     }
 
     private async void OnCheckNow(object sender, RoutedEventArgs e)
@@ -149,6 +206,23 @@ public sealed partial class MainWindow : Window
                 FileName = _loggingService.LogDirectory,
                 UseShellExecute = true,
             });
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private void OnCheckIntervalChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    {
+        if (double.IsNaN(args.NewValue) || args.NewValue < 1 || args.NewValue > 24)
+        {
+            return;
+        }
+
+        try
+        {
+            _settingsService.UpdateCheckInterval((int)args.NewValue);
         }
         catch
         {

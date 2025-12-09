@@ -7,7 +7,7 @@
     mc:Ignorable="d"
     Title="WSL Kernel Watcher (WinUI 3)">
     <Grid Padding="16"
-          RowDefinitions="Auto,*,Auto"
+          RowDefinitions="Auto,Auto,*,Auto"
           RowSpacing="12">
         <StackPanel Spacing="6">
             <TextBlock Text="WSL Kernel Watcher (WinUI 3 preview)"
@@ -17,7 +17,27 @@
                        Text="Waiting for first check..."/>
         </StackPanel>
 
-        <Border Grid.Row="1"
+        <Expander Grid.Row="1"
+                  Header="Settings"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch">
+            <StackPanel Spacing="8" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Check interval (hours):" VerticalAlignment="Center"/>
+                    <NumberBox x:Name="CheckIntervalBox"
+                               Minimum="1"
+                               Maximum="24"
+                               SpinButtonPlacementMode="Inline"
+                               Width="120"
+                               ValueChanged="OnCheckIntervalChanged"/>
+                </StackPanel>
+                <TextBlock Text="Changes will take effect after restart"
+                           FontSize="12"
+                           Foreground="{ThemeResource SystemControlDisabledChromeDisabledLowBrush}"/>
+            </StackPanel>
+        </Expander>
+
+        <Border Grid.Row="2"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
@@ -39,7 +59,7 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="2"
+        <StackPanel Grid.Row="3"
                     Orientation="Horizontal"
                     Spacing="8"
                     VerticalAlignment="Center">

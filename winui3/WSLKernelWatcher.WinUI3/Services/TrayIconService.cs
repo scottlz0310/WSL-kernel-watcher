@@ -19,6 +19,7 @@ public class TrayIconService : IDisposable
     private readonly nint _hwnd;
     private readonly uint _callbackMessage = WM_TRAYICON;
     private bool _isAdded;
+    private nint _hIcon;
 
     public event EventHandler? LeftClick;
     public event EventHandler? RightClick;
@@ -42,11 +43,17 @@ public class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern nint LoadIcon(nint hInstance, nint lpIconName);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint LoadImage(nint hInst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern nint GetModuleHandle(string? lpModuleName);
 
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(nint hIcon);
+
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x00000010;
 
     public TrayIconService(Window window)
     {
@@ -58,8 +65,19 @@ public class TrayIconService : IDisposable
         if (_isAdded)
             return true;
 
-        var hInstance = GetModuleHandle(null);
-        var hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
+        // Try to load custom icon from Assets folder
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsl_watcher_icon.ico");
+        if (File.Exists(iconPath))
+        {
+            _hIcon = LoadImage(nint.Zero, iconPath, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+        }
+
+        // Fallback to default application icon if custom icon fails to load
+        if (_hIcon == nint.Zero)
+        {
+            var hInstance = GetModuleHandle(null);
+            _hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
+        }
 
         var nid = new NOTIFYICONDATA
         {
@@ -68,7 +86,7 @@ public class TrayIconService : IDisposable
             uID = 1,
             uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
             uCallbackMessage = _callbackMessage,
-            hIcon = hIcon,
+            hIcon = _hIcon,
             szTip = tooltip
         };
 
@@ -80,9 +98,6 @@ public class TrayIconService : IDisposable
     {
         if (!_isAdded)
             return false;
-
-        var hInstance = GetModuleHandle(null);
-        var hIcon = LoadIcon(hInstance, new nint(32512));
 
         var nid = new NOTIFYICONDATA
         {
@@ -133,5 +148,10 @@ public class TrayIconService : IDisposable
     public void Dispose()
     {
         RemoveIcon();
+        if (_hIcon != nint.Zero)
+        {
+            DestroyIcon(_hIcon);
+            _hIcon = nint.Zero;
+        }
     }
 }
