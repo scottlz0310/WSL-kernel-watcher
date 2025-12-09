@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Graphics;
 using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3;
@@ -15,6 +16,13 @@ public sealed partial class MainWindow : Window
     public MainWindow(KernelWatcherService service, LoggingService loggingService)
     {
         InitializeComponent();
+
+        // Set window size (WinUI3 requires this in code)
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+        var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+        appWindow.Resize(new SizeInt32(520, 360));
+
         _service = service;
         _loggingService = loggingService;
         _service.StatusChanged += OnStatusChanged;

@@ -65,7 +65,7 @@ public sealed class KernelWatcherService : IAsyncDisposable
 
     private async Task RunAsync(CancellationToken token)
     {
-        await using var timer = new PeriodicTimer(_interval);
+        using var timer = new PeriodicTimer(_interval);
         while (!token.IsCancellationRequested)
         {
             await CheckOnceAsync(token).ConfigureAwait(false);

@@ -5,9 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="WSL Kernel Watcher (WinUI 3)"
-    Width="520"
-    Height="360">
+    Title="WSL Kernel Watcher (WinUI 3)">
     <Grid Padding="16"
           RowDefinitions="Auto,*,Auto"
           RowSpacing="12">
@@ -26,15 +24,15 @@
                 Padding="8">
             <StackPanel>
                 <TextBlock Text="Recent activity"
-                        FontWeight="SemiBold"
-                        Margin="0,0,0,4"/>
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,4"/>
                 <ListView x:Name="LogList"
                           Height="200"
                           SelectionMode="None">
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}"
-                                    TextWrapping="Wrap"/>
+                                       TextWrapping="Wrap"/>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
