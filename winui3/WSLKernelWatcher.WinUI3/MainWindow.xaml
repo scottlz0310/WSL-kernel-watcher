@@ -47,7 +47,7 @@
                     Click="OnCheckNow"/>
             <Button Content="Open log folder"
                     Click="OnOpenLogFolder"/>
-            <Button Content="Exit"
+            <Button Content="Minimize to tray"
                     Click="OnExit"/>
         </StackPanel>
     </Grid>
