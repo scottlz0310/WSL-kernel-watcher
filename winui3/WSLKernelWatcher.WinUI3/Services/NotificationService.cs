@@ -8,7 +8,7 @@ using Microsoft.Windows.AppNotifications.Builder;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
-public sealed class NotificationService
+internal sealed class NotificationService
 {
     private bool initialized;
 

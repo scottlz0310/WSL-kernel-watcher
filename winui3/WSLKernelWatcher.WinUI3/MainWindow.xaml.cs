@@ -14,7 +14,7 @@ using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3;
 
-public sealed partial class MainWindow : Window
+internal sealed partial class MainWindow : Window
 {
     private readonly KernelWatcherService service;
     private readonly LoggingService loggingService;
@@ -54,7 +54,7 @@ public sealed partial class MainWindow : Window
     private const uint IMAGEICON = 1;
     private const uint LRLOADFROMFILE = 0x00000010;
 
-    public MainWindow(KernelWatcherService service, LoggingService loggingService, SettingsService settingsService, bool showWindow = true)
+    internal MainWindow(KernelWatcherService service, LoggingService loggingService, SettingsService settingsService, bool showWindow = true)
     {
         InitializeComponent();
 

@@ -6,15 +6,13 @@ using System.Runtime.InteropServices;
 
 namespace WSLKernelWatcher.WinUI3.Helpers;
 
-public class TrayContextMenu : IDisposable
+internal sealed class TrayContextMenu : IDisposable
 {
     private const int MFSTRING = 0x00000000;
     private const int MFSEPARATOR = 0x00000800;
     private const int TPMLEFTALIGN = 0x0000;
     private const int TPMBOTTOMALIGN = 0x0020;
     private const int TPMRETURNCMD = 0x0100;
-    private const int WMCOMMAND = 0x0111;
-
     private nint hMenu;
     private readonly Dictionary<int, Action> menuActions = new();
     private int nextCommandId = 1000; // Start from 1000 to avoid conflicts

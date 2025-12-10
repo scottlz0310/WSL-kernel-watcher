@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
-public class SettingsService
+internal sealed class SettingsService
 {
     private readonly string settingsPath;
     private readonly AppSettings settings;
@@ -76,7 +76,7 @@ public class SettingsService
     }
 }
 
-public class AppSettings
+internal sealed class AppSettings
 {
     public int CheckIntervalHours { get; set; } = 2;
 }

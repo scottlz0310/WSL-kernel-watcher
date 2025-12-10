@@ -7,7 +7,7 @@ using System.IO;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
-public sealed class LoggingService
+internal sealed class LoggingService
 {
     private const long MaxBytes = 1_000_000; // 1MB
     private readonly string logDirectory;

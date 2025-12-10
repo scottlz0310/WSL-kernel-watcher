@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
-public sealed class KernelWatcherService : IAsyncDisposable
+internal sealed class KernelWatcherService : IAsyncDisposable
 {
     private readonly TimeSpan interval;
     private readonly HttpClient httpClient;

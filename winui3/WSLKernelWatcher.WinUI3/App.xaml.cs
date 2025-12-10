@@ -8,6 +8,7 @@ using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1515", Justification = "WinUI entry point requires public accessibility")]
 public partial class App : Application
 {
     private MainWindow? window;

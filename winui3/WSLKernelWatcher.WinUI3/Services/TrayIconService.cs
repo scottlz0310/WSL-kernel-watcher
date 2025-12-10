@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
-public class TrayIconService : IDisposable
+internal sealed class TrayIconService : IDisposable
 {
     private const int WMAPP = 0x8000;
     private const int WMTRAYICON = WMAPP + 1;
