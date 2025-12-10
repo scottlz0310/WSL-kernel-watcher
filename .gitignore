@@ -197,3 +197,31 @@ obj/
 
 # Visual Studio
 .vs/
+
+# Auto-generated entries from templates
+*.DotSettings.user
+*.aps
+*.cache
+*.coverage
+*.coveragexml
+*.ilk
+*.nupkg
+*.obj
+*.opencover.xml
+*.pch
+*.sln.docstates
+*.suo
+*.tlog
+*.user
+*.userosscache
+AppPackages/
+BundleArtifacts/
+[Bb]in/
+[Ll]og/
+[Oo]bj/
+_ReSharper*/
+artifacts/
+packages/
+project.fragment.lock.json
+project.lock.json
+publish/
