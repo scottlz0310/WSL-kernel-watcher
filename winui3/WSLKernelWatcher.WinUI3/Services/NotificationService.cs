@@ -12,17 +12,17 @@ namespace WSLKernelWatcher.WinUI3.Services;
 [ExcludeFromCodeCoverage]
 internal sealed class NotificationService
 {
-    private bool initialized;
+    private bool _initialized;
 
     public void Initialize()
     {
-        if (this.initialized)
+        if (this._initialized)
         {
             return;
         }
 
         AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
-        this.initialized = true;
+        this._initialized = true;
     }
 
     public void NotifyUpdateAvailable(string current, string latest)

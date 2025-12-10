@@ -32,6 +32,7 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="SecurityCodeScan.VS2019" />
   </ItemGroup>
 
   <ItemGroup>

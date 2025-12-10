@@ -10,9 +10,9 @@ namespace WSLKernelWatcher.WinUI3.Services;
 internal sealed class LoggingService
 {
     private const long DefaultMaxBytes = 1_000_000; // 1MB
-    private readonly string logDirectory;
-    private readonly string logFilePath;
-    private readonly long maxBytes;
+    private readonly string _logDirectory;
+    private readonly string _logFilePath;
+    private readonly long _maxBytes;
 
     public event EventHandler<string>? LogAppended;
 
@@ -33,13 +33,13 @@ internal sealed class LoggingService
             throw new ArgumentOutOfRangeException(nameof(maxBytes), "ログファイルの最大サイズは 1 バイト以上である必要があります。");
         }
 
-        this.logDirectory = logDirectory;
-        this.maxBytes = maxBytes;
-        Directory.CreateDirectory(this.logDirectory);
-        this.logFilePath = Path.Combine(this.logDirectory, "winui3.log");
+        this._logDirectory = logDirectory;
+        this._maxBytes = maxBytes;
+        Directory.CreateDirectory(this._logDirectory);
+        this._logFilePath = Path.Combine(this._logDirectory, "winui3.log");
     }
 
-    public string LogDirectory => this.logDirectory;
+    public string LogDirectory => this._logDirectory;
 
     public async Task WriteAsync(string message)
     {
@@ -47,7 +47,7 @@ internal sealed class LoggingService
         await this.RotateIfNeededAsync().ConfigureAwait(false);
         try
         {
-            await File.AppendAllTextAsync(this.logFilePath, line + Environment.NewLine).ConfigureAwait(false);
+            await File.AppendAllTextAsync(this._logFilePath, line + Environment.NewLine).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -61,11 +61,11 @@ internal sealed class LoggingService
     {
         try
         {
-            var info = new FileInfo(this.logFilePath);
-            if (info.Exists && info.Length > this.maxBytes)
+            var info = new FileInfo(this._logFilePath);
+            if (info.Exists && info.Length > this._maxBytes)
             {
-                string archive = Path.Combine(this.logDirectory, $"winui3-{DateTimeOffset.Now:yyyyMMddHHmmss}.log");
-                File.Move(this.logFilePath, archive, true);
+                string archive = Path.Combine(this._logDirectory, $"winui3-{DateTimeOffset.Now:yyyyMMddHHmmss}.log");
+                File.Move(this._logFilePath, archive, true);
             }
         }
         catch (Exception ex)

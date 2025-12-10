@@ -15,9 +15,9 @@ internal sealed class TrayContextMenu : IDisposable
     private const int TPMLEFTALIGN = 0x0000;
     private const int TPMBOTTOMALIGN = 0x0020;
     private const int TPMRETURNCMD = 0x0100;
-    private nint hMenu;
-    private readonly Dictionary<int, Action> menuActions = new();
-    private int nextCommandId = 1000; // Start from 1000 to avoid conflicts
+    private nint _hMenu;
+    private readonly Dictionary<int, Action> _menuActions = new();
+    private int _nextCommandId = 1000; // Start from 1000 to avoid conflicts
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint CreatePopupMenu();
@@ -51,19 +51,19 @@ internal sealed class TrayContextMenu : IDisposable
 
     public TrayContextMenu()
     {
-        this.hMenu = CreatePopupMenu();
+        this._hMenu = CreatePopupMenu();
     }
 
     public void AddMenuItem(string text, Action action)
     {
-        int commandId = this.nextCommandId++;
-        AppendMenu(this.hMenu, MFSTRING, new nint(commandId), text);
-        this.menuActions[commandId] = action;
+        int commandId = this._nextCommandId++;
+        AppendMenu(this._hMenu, MFSTRING, new nint(commandId), text);
+        this._menuActions[commandId] = action;
     }
 
     public void AddSeparator()
     {
-        AppendMenu(this.hMenu, MFSEPARATOR, nint.Zero, string.Empty);
+        AppendMenu(this._hMenu, MFSEPARATOR, nint.Zero, string.Empty);
     }
 
     public void Show(nint hwnd)
@@ -72,12 +72,12 @@ internal sealed class TrayContextMenu : IDisposable
         GetCursorPos(out POINT pt);
 
         // TPM_RETURNCMD makes TrackPopupMenu return the selected command ID directly
-        int selectedId = TrackPopupMenu(this.hMenu, TPMLEFTALIGN | TPMBOTTOMALIGN | TPMRETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
+        int selectedId = TrackPopupMenu(this._hMenu, TPMLEFTALIGN | TPMBOTTOMALIGN | TPMRETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
 
         // Post a message to ensure the menu is properly closed
         PostMessage(hwnd, WMNULL, nint.Zero, nint.Zero);
 
-        if (selectedId > 0 && this.menuActions.TryGetValue(selectedId, out Action? action))
+        if (selectedId > 0 && this._menuActions.TryGetValue(selectedId, out Action? action))
         {
             action?.Invoke();
         }
@@ -85,7 +85,7 @@ internal sealed class TrayContextMenu : IDisposable
 
     public bool ProcessCommand(int commandId)
     {
-        if (this.menuActions.TryGetValue(commandId, out Action? action))
+        if (this._menuActions.TryGetValue(commandId, out Action? action))
         {
             action?.Invoke();
             return true;
@@ -96,10 +96,10 @@ internal sealed class TrayContextMenu : IDisposable
 
     public void Dispose()
     {
-        if (this.hMenu != nint.Zero)
+        if (this._hMenu != nint.Zero)
         {
-            DestroyMenu(this.hMenu);
-            this.hMenu = nint.Zero;
+            DestroyMenu(this._hMenu);
+            this._hMenu = nint.Zero;
         }
     }
 }

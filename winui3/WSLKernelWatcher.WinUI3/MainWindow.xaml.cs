@@ -18,18 +18,18 @@ namespace WSLKernelWatcher.WinUI3;
 [ExcludeFromCodeCoverage]
 internal sealed partial class MainWindow : Window
 {
-    private readonly KernelWatcherService service;
-    private readonly LoggingService loggingService;
-    private readonly SettingsService settingsService;
-    private readonly ObservableCollection<string> logEntries = new();
-    private readonly TrayIconService trayIconService;
-    private TrayContextMenu? contextMenu;
-    private readonly nint hwnd;
+    private readonly KernelWatcherService _service;
+    private readonly LoggingService _loggingService;
+    private readonly SettingsService _settingsService;
+    private readonly ObservableCollection<string> _logEntries = new();
+    private readonly TrayIconService _trayIconService;
+    private TrayContextMenu? _contextMenu;
+    private readonly nint _hwnd;
 
     private delegate nint WndProcDelegate(nint hWnd, uint msg, nint wParam, nint lParam);
 
-    private readonly WndProcDelegate? newWndProcDelegate;
-    private readonly nint oldWndProc;
+    private readonly WndProcDelegate? _newWndProcDelegate;
+    private readonly nint _oldWndProc;
 
     [DllImport("user32.dll")]
     private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
@@ -61,69 +61,69 @@ internal sealed partial class MainWindow : Window
         InitializeComponent();
 
         // Set window size (WinUI3 requires this in code)
-        this.hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(this.hwnd);
+        this._hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(this._hwnd);
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
         appWindow.Resize(new SizeInt32(520, 360));
 
         // Set window icon
         this.SetWindowIcon();
 
-        this.service = service;
-        this.loggingService = loggingService;
-        this.settingsService = settingsService;
-        this.service.StatusChanged += this.OnStatusChanged;
-        this.loggingService.LogAppended += this.OnLogAppended;
-        LogList.ItemsSource = this.logEntries;
+        this._service = service;
+        this._loggingService = loggingService;
+        this._settingsService = settingsService;
+        this._service.StatusChanged += this.OnStatusChanged;
+        this._loggingService.LogAppended += this.OnLogAppended;
+        LogList.ItemsSource = this._logEntries;
 
         // Load settings
-        CheckIntervalBox.Value = this.settingsService.Settings.CheckIntervalHours;
+        CheckIntervalBox.Value = this._settingsService.Settings.CheckIntervalHours;
 
         // Setup tray icon
-        this.trayIconService = new TrayIconService(this);
-        this.trayIconService.LeftClick += this.OnTrayIconLeftClick;
-        this.trayIconService.RightClick += this.OnTrayIconRightClick;
-        this.trayIconService.AddIcon("WSL Kernel Watcher");
+        this._trayIconService = new TrayIconService(this);
+        this._trayIconService.LeftClick += this.OnTrayIconLeftClick;
+        this._trayIconService.RightClick += this.OnTrayIconRightClick;
+        this._trayIconService.AddIcon("WSL Kernel Watcher");
 
         // Hook window messages to process tray icon messages
-        this.newWndProcDelegate = new WndProcDelegate(this.NewWndProc);
-        this.oldWndProc = SetWindowLongPtr(this.hwnd, GWLWNDPROC, Marshal.GetFunctionPointerForDelegate(this.newWndProcDelegate));
+        this._newWndProcDelegate = new WndProcDelegate(this.NewWndProc);
+        this._oldWndProc = SetWindowLongPtr(this._hwnd, GWLWNDPROC, Marshal.GetFunctionPointerForDelegate(this._newWndProcDelegate));
 
         // Hide window if requested
         if (!showWindow)
         {
-            ShowWindow(this.hwnd, SWHIDE);
+            ShowWindow(this._hwnd, SWHIDE);
         }
     }
 
     private nint NewWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
     {
         // Process tray icon messages
-        this.trayIconService?.ProcessWindowMessage(msg, wParam, lParam);
+        this._trayIconService?.ProcessWindowMessage(msg, wParam, lParam);
 
         // Process WM_COMMAND messages for context menu
         if (msg == WMCOMMAND)
         {
             int commandId = wParam.ToInt32() & 0xFFFF;
-            if (this.contextMenu?.ProcessCommand(commandId) == true)
+            if (this._contextMenu?.ProcessCommand(commandId) == true)
             {
                 return nint.Zero;
             }
         }
 
         // Call original window procedure
-        return CallWindowProc(this.oldWndProc, hWnd, msg, wParam, lParam);
+        return CallWindowProc(this._oldWndProc, hWnd, msg, wParam, lParam);
     }
 
     public void ShowWindowFromTray()
     {
-        ShowWindow(this.hwnd, SWSHOW);
+        ShowWindow(this._hwnd, SWSHOW);
         this.Activate();
     }
 
     public void HideWindowToTray()
     {
-        ShowWindow(this.hwnd, SWHIDE);
+        ShowWindow(this._hwnd, SWHIDE);
     }
 
     private void SetWindowIcon()
@@ -138,12 +138,12 @@ internal sealed partial class MainWindow : Window
 
                 if (hIconSmall != nint.Zero)
                 {
-                    SendMessage(this.hwnd, WMSETICON, new nint(ICONSMALL), hIconSmall);
+                    SendMessage(this._hwnd, WMSETICON, new nint(ICONSMALL), hIconSmall);
                 }
 
                 if (hIconBig != nint.Zero)
                 {
-                    SendMessage(this.hwnd, WMSETICON, new nint(ICONBIG), hIconBig);
+                    SendMessage(this._hwnd, WMSETICON, new nint(ICONBIG), hIconBig);
                 }
             }
         }
@@ -155,7 +155,7 @@ internal sealed partial class MainWindow : Window
 
     private async void OnCheckNow(object sender, RoutedEventArgs e)
     {
-        await this.service.CheckOnceAsync();
+        await this._service.CheckOnceAsync();
     }
 
     private void OnExit(object sender, RoutedEventArgs e)
@@ -170,19 +170,19 @@ internal sealed partial class MainWindow : Window
 
     private void OnTrayIconRightClick(object? sender, EventArgs e)
     {
-        this.contextMenu?.Dispose();
-        this.contextMenu = new TrayContextMenu();
-        this.contextMenu.AddMenuItem("開く(&O)", () => this.DispatcherQueue.TryEnqueue(this.ShowWindowFromTray));
-        this.contextMenu.AddMenuItem("今すぐチェック(&C)", () => this.DispatcherQueue.TryEnqueue(async () => await this.service.CheckOnceAsync()));
-        this.contextMenu.AddSeparator();
-        this.contextMenu.AddMenuItem("終了(&X)", () => this.DispatcherQueue.TryEnqueue(this.ExitApplication));
-        this.contextMenu.Show(this.hwnd);
+        this._contextMenu?.Dispose();
+        this._contextMenu = new TrayContextMenu();
+        this._contextMenu.AddMenuItem("開く(&O)", () => this.DispatcherQueue.TryEnqueue(this.ShowWindowFromTray));
+        this._contextMenu.AddMenuItem("今すぐチェック(&C)", () => this.DispatcherQueue.TryEnqueue(async () => await this._service.CheckOnceAsync()));
+        this._contextMenu.AddSeparator();
+        this._contextMenu.AddMenuItem("終了(&X)", () => this.DispatcherQueue.TryEnqueue(this.ExitApplication));
+        this._contextMenu.Show(this._hwnd);
     }
 
     private void ExitApplication()
     {
-        this.trayIconService?.Dispose();
-        this.contextMenu?.Dispose();
+        this._trayIconService?.Dispose();
+        this._contextMenu?.Dispose();
         this.Close();
     }
 
@@ -195,11 +195,11 @@ internal sealed partial class MainWindow : Window
     {
         _ = this.DispatcherQueue.TryEnqueue(() =>
         {
-            this.logEntries.Add(line);
+            this._logEntries.Add(line);
             const int maxEntries = 200;
-            if (this.logEntries.Count > maxEntries)
+            if (this._logEntries.Count > maxEntries)
             {
-                this.logEntries.RemoveAt(0);
+                this._logEntries.RemoveAt(0);
             }
         });
     }
@@ -210,7 +210,7 @@ internal sealed partial class MainWindow : Window
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = this.loggingService.LogDirectory,
+                FileName = this._loggingService.LogDirectory,
                 UseShellExecute = true,
             });
         }
@@ -229,7 +229,7 @@ internal sealed partial class MainWindow : Window
 
         try
         {
-            this.settingsService.UpdateCheckInterval((int)args.NewValue);
+            this._settingsService.UpdateCheckInterval((int)args.NewValue);
         }
         catch
         {

@@ -13,22 +13,22 @@ namespace WSLKernelWatcher.WinUI3;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1515", Justification = "WinUI entry point requires public accessibility")]
 public partial class App : Application
 {
-    private MainWindow? window;
-    private readonly NotificationService notificationService = new();
-    private readonly LoggingService loggingService = new();
-    private readonly SettingsService settingsService = new();
-    private readonly KernelWatcherService watcherService;
+    private MainWindow? _window;
+    private readonly NotificationService _notificationService = new();
+    private readonly LoggingService _loggingService = new();
+    private readonly SettingsService _settingsService = new();
+    private readonly KernelWatcherService _watcherService;
 
     public App()
     {
         InitializeComponent();
         AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
         AppNotificationManager.Default.Register();
-        this.notificationService.Initialize();
+        this._notificationService.Initialize();
 
         // Create watcher service with settings
-        var interval = TimeSpan.FromHours(this.settingsService.Settings.CheckIntervalHours);
-        this.watcherService = new KernelWatcherService(this.notificationService, this.loggingService, interval);
+        var interval = TimeSpan.FromHours(this._settingsService.Settings.CheckIntervalHours);
+        this._watcherService = new KernelWatcherService(this._notificationService, this._loggingService, interval);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -37,29 +37,29 @@ public partial class App : Application
         string[] commandLineArgs = Environment.GetCommandLineArgs();
         bool showWindow = !commandLineArgs.Contains("--tray") && !commandLineArgs.Contains("-t");
 
-        this.window = new MainWindow(this.watcherService, this.loggingService, this.settingsService, showWindow);
-        this.window.Closed += this.OnWindowClosed;
+        this._window = new MainWindow(this._watcherService, this._loggingService, this._settingsService, showWindow);
+        this._window.Closed += this.OnWindowClosed;
 
         // Activate window if it should be shown
         if (showWindow)
         {
-            this.window.Activate();
+            this._window.Activate();
         }
 
-        this.watcherService.Start();
+        this._watcherService.Start();
     }
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        this.watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
+        this._watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
     }
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
         // Show window when notification is clicked
-        if (this.window != null)
+        if (this._window != null)
         {
-            this.window.DispatcherQueue.TryEnqueue(() => this.window.ShowWindowFromTray());
+            this._window.DispatcherQueue.TryEnqueue(() => this._window.ShowWindowFromTray());
         }
     }
 }

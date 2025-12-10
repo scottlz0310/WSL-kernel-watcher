@@ -22,10 +22,10 @@ internal sealed class TrayIconService : IDisposable
     private const int WMLBUTTONUP = 0x0202;
     private const int WMRBUTTONUP = 0x0205;
 
-    private readonly nint hwnd;
-    private readonly uint callbackMessage = WMTRAYICON;
-    private bool isAdded;
-    private nint hIcon;
+    private readonly nint _hwnd;
+    private readonly uint _callbackMessage = WMTRAYICON;
+    private bool _isAdded;
+    private nint _hIcon;
 
     public event EventHandler? LeftClick;
 
@@ -64,12 +64,12 @@ internal sealed class TrayIconService : IDisposable
 
     public TrayIconService(Window window)
     {
-        this.hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        this._hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
     }
 
     public bool AddIcon(string tooltip)
     {
-        if (this.isAdded)
+        if (this._isAdded)
         {
             return true;
         }
@@ -78,34 +78,34 @@ internal sealed class TrayIconService : IDisposable
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsl_watcher_icon.ico");
         if (File.Exists(iconPath))
         {
-            this.hIcon = LoadImage(nint.Zero, iconPath, IMAGEICON, 16, 16, LRLOADFROMFILE);
+            this._hIcon = LoadImage(nint.Zero, iconPath, IMAGEICON, 16, 16, LRLOADFROMFILE);
         }
 
         // Fallback to default application icon if custom icon fails to load
-        if (this.hIcon == nint.Zero)
+        if (this._hIcon == nint.Zero)
         {
             nint hInstance = GetModuleHandle(null);
-            this.hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
+            this._hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
         }
 
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this.hwnd,
+            HWnd = this._hwnd,
             UID = 1,
             UFlags = NIFMESSAGE | NIFICON | NIFTIP,
-            UCallbackMessage = this.callbackMessage,
-            HIcon = this.hIcon,
+            UCallbackMessage = this._callbackMessage,
+            HIcon = this._hIcon,
             SzTip = tooltip,
         };
 
-        this.isAdded = Shell_NotifyIcon(NIMADD, ref nid);
-        return this.isAdded;
+        this._isAdded = Shell_NotifyIcon(NIMADD, ref nid);
+        return this._isAdded;
     }
 
     public bool UpdateTooltip(string tooltip)
     {
-        if (!this.isAdded)
+        if (!this._isAdded)
         {
             return false;
         }
@@ -113,7 +113,7 @@ internal sealed class TrayIconService : IDisposable
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this.hwnd,
+            HWnd = this._hwnd,
             UID = 1,
             UFlags = NIFTIP,
             SzTip = tooltip,
@@ -124,7 +124,7 @@ internal sealed class TrayIconService : IDisposable
 
     public bool RemoveIcon()
     {
-        if (!this.isAdded)
+        if (!this._isAdded)
         {
             return true;
         }
@@ -132,17 +132,17 @@ internal sealed class TrayIconService : IDisposable
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this.hwnd,
+            HWnd = this._hwnd,
             UID = 1,
         };
 
-        this.isAdded = !Shell_NotifyIcon(NIMDELETE, ref nid);
-        return !this.isAdded;
+        this._isAdded = !Shell_NotifyIcon(NIMDELETE, ref nid);
+        return !this._isAdded;
     }
 
     public bool ProcessWindowMessage(uint msg, nint wParam, nint lParam)
     {
-        if (msg != this.callbackMessage)
+        if (msg != this._callbackMessage)
         {
             return false;
         }
@@ -163,10 +163,10 @@ internal sealed class TrayIconService : IDisposable
     public void Dispose()
     {
         this.RemoveIcon();
-        if (this.hIcon != nint.Zero)
+        if (this._hIcon != nint.Zero)
         {
-            DestroyIcon(this.hIcon);
-            this.hIcon = nint.Zero;
+            DestroyIcon(this._hIcon);
+            this._hIcon = nint.Zero;
         }
     }
 }

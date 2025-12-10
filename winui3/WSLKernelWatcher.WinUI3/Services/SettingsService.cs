@@ -8,11 +8,11 @@ namespace WSLKernelWatcher.WinUI3.Services;
 
 internal sealed class SettingsService
 {
-    private readonly string settingsDirectory;
-    private readonly string settingsPath;
-    private readonly AppSettings settings;
+    private readonly string _settingsDirectory;
+    private readonly string _settingsPath;
+    private readonly AppSettings _settings;
 
-    public AppSettings Settings => this.settings;
+    public AppSettings Settings => this._settings;
 
     public event EventHandler? SettingsChanged;
 
@@ -28,20 +28,20 @@ internal sealed class SettingsService
             throw new ArgumentException("設定保存先のディレクトリが不正です。", nameof(settingsDirectory));
         }
 
-        this.settingsDirectory = settingsDirectory;
-        Directory.CreateDirectory(this.settingsDirectory);
-        this.settingsPath = Path.Combine(this.settingsDirectory, "settings.json");
+        this._settingsDirectory = settingsDirectory;
+        Directory.CreateDirectory(this._settingsDirectory);
+        this._settingsPath = Path.Combine(this._settingsDirectory, "settings.json");
 
-        this.settings = this.LoadSettings();
+        this._settings = this.LoadSettings();
     }
 
     private AppSettings LoadSettings()
     {
         try
         {
-            if (File.Exists(this.settingsPath))
+            if (File.Exists(this._settingsPath))
             {
-                string json = File.ReadAllText(this.settingsPath);
+                string json = File.ReadAllText(this._settingsPath);
                 AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(json);
                 if (settings != null)
                 {
@@ -61,11 +61,11 @@ internal sealed class SettingsService
     {
         try
         {
-            string json = JsonSerializer.Serialize(this.settings, new JsonSerializerOptions
+            string json = JsonSerializer.Serialize(this._settings, new JsonSerializerOptions
             {
                 WriteIndented = true,
             });
-            File.WriteAllText(this.settingsPath, json);
+            File.WriteAllText(this._settingsPath, json);
             this.SettingsChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
@@ -81,7 +81,7 @@ internal sealed class SettingsService
             throw new ArgumentOutOfRangeException(nameof(hours), "Check interval must be between 1 and 24 hours");
         }
 
-        this.settings.CheckIntervalHours = hours;
+        this._settings.CheckIntervalHours = hours;
         this.SaveSettings();
     }
 }
