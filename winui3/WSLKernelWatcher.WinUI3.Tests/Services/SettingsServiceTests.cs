@@ -1,26 +1,27 @@
 using FluentAssertions;
+using System.Text.Json;
 using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3.Tests.Services;
 
 public class SettingsServiceTests : IDisposable
 {
-    private readonly string _testSettingsPath;
+    private readonly string _settingsDirectory;
     private readonly SettingsService _settingsService;
 
     public SettingsServiceTests()
     {
-        // Use a temporary settings file for testing
-        _testSettingsPath = Path.Combine(Path.GetTempPath(), $"test_settings_{Guid.NewGuid()}.json");
-        _settingsService = new SettingsService();
+        // テスト専用の一時ディレクトリを使用する
+        _settingsDirectory = Path.Combine(Path.GetTempPath(), $"WSLKernelWatcherTests_{Guid.NewGuid()}");
+        _settingsService = new SettingsService(_settingsDirectory);
     }
 
     public void Dispose()
     {
-        // Clean up test settings file
-        if (File.Exists(_testSettingsPath))
+        // テスト用に作成したディレクトリを削除する
+        if (Directory.Exists(_settingsDirectory))
         {
-            File.Delete(_testSettingsPath);
+            Directory.Delete(_settingsDirectory, true);
         }
     }
 
@@ -57,6 +58,39 @@ public class SettingsServiceTests : IDisposable
         // Act & Assert
         Action act = () => _settingsService.UpdateCheckInterval(invalidInterval);
         act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void SettingsService_ShouldLoadExistingFile()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), $"WSLKernelWatcherTests_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        string settingsPath = Path.Combine(tempDir, "settings.json");
+        File.WriteAllText(settingsPath, JsonSerializer.Serialize(new AppSettings { CheckIntervalHours = 7 }));
+
+        try
+        {
+            // Act
+            var service = new SettingsService(tempDir);
+
+            // Assert
+            service.Settings.CheckIntervalHours.Should().Be(7);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void SettingsService_ShouldThrowWhenDirectoryIsInvalid()
+    {
+        // Act
+        Action act = () => new SettingsService(string.Empty);
+
+        // Assert
+        act.Should().Throw<ArgumentException>();
     }
 
     [Theory]

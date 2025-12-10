@@ -1,26 +1,34 @@
-# Repository Guidelines
+## リポジトリガイドライン
 
-## Use Japanese Language
-このリポジトリのドキュメントとコードコメントは日本語で記述してください。英語の使用は避け、すべてのコミュニケーションを日本語で行うことを徹底してください。
+### 日本語を使用すること
+このリポジトリにおけるドキュメントおよびコードコメントは日本語で記述してください。英語の使用は避け、すべてのコミュニケーションを日本語で行うよう徹底してください。
 
-## Project Structure & Module Organization
-WSL Kernel Watcher lives under `winui3/WSLKernelWatcher.WinUI3`, with features split into `Services/` (interval logic, settings), `ViewModels/`, and `Helpers/`. Tests sit beside the app in `winui3/WSLKernelWatcher.WinUI3.Tests`. Deployment tooling and hooks are in `scripts/` (PowerShell) and `.ci-helper/`, while assets such as `wsl_watcher_icon.png` and supplemental notes in `docs/` support packaging. Keep experimental notebooks or OS-specific plans inside `windows_only_plan/` to avoid polluting the solution.
+### プロジェクト構造とモジュール分割
+WSL Kernel Watcher は `winui3/WSLKernelWatcher.WinUI3` 配下に含まれます。主な機能は `Services/`（間隔ロジックや設定）、`ViewModels/`、`Helpers/` に分割されています。テストは `winui3/WSLKernelWatcher.WinUI3.Tests` に配置されています。デプロイ用スクリプトや CI フックは `scripts/`（PowerShell）と `.ci-helper/` にあります。`wsl_watcher_icon.png` のようなアセットや、パッケージングに関する補足は `docs/` に置いてください。OS 固有の実験ノートは `windows_only_plan/` にまとめて、ソリューション直下が散らからないようにしてください。
 
-## Build, Test, and Development Commands
-Run `pwsh -File .\scripts\setup-dev.ps1` once to install pre-commit hooks and restore NuGet packages. Build the WinUI 3 app via a Visual Studio Developer PowerShell using:
+### ビルド、テスト、および開発コマンド
+一度だけ次のコマンドを実行して、pre-commit フックをインストールし NuGet パッケージを復元してください:
+```powershell
+pwsh -File .\scripts\setup-dev.ps1
+```
+WinUI 3 アプリは Visual Studio の Developer PowerShell から MSBuild でビルドしてください（`dotnet build` は使用しない）:
 ```powershell
 msbuild winui3\WSLKernelWatcher.WinUI3\WSLKernelWatcher.WinUI3.csproj /p:Configuration=Release /p:Platform=x64
 ```
-Skip `dotnet build`; WinUI 3 requires full MSBuild. Run `dotnet test winui3/WSLKernelWatcher.WinUI3.sln` for the xUnit suite, and `dotnet format winui3/WSLKernelWatcher.WinUI3.sln` before committing to match CI. Use `.\scripts\install.ps1 -StartMinimized` to register the built binary with Task Scheduler; `.\scripts\uninstall.ps1` cleans it.
+テストは xUnit で `dotnet test winui3/WSLKernelWatcher.WinUI3.sln` を実行します。CI と同じフォーマットルールを適用するためにコミット前に `dotnet format winui3/WSLKernelWatcher.WinUI3.sln` を実行してください。ビルド済みバイナリをタスクスケジューラーに登録するには:
+```powershell
+.\scripts\install.ps1 -StartMinimized
+```
+登録解除は `.\scripts\uninstall.ps1` を使用します。
 
-## Coding Style & Naming Conventions
-The solution enforces `.editorconfig`: UTF-8, CRLF, 4-space indentation (2 for XML/JSON/YAML), file-scoped namespaces, and braces on new lines. Interfaces start with `I`, private fields use a leading underscore, and warnings fail builds because `TreatWarningsAsErrors=true`. Prefer explicit types except when the type is obvious, `using` directives belong outside namespaces, and StyleCop/Roslyn analyzers plus `SecurityCodeScan` run in CI.
+### コーディングスタイルと命名規則
+このソリューションは `.editorconfig` を適用しています：文字コード UTF-8、改行 CRLF、インデントは 4 スペース（XML/JSON/YAML は 2 スペース）、ファイルスコープの名前空間、波括弧は改行に置く、などです。インターフェイス名は `I` で始め、プライベートフィールドは先頭にアンダースコアを付けます。`TreatWarningsAsErrors=true` のため、警告はビルド失敗につながります。型推論が明確な場合を除き明示的な型を使用してください。`using` ディレクティブは名前空間外に置き、StyleCop/Roslyn アナライザや `SecurityCodeScan` を CI で有効にしています。
 
-## Testing Guidelines
-xUnit and FluentAssertions power the suite under `winui3/WSLKernelWatcher.WinUI3.Tests`. Follow the pattern `MethodName_ShouldExpectation` and favor `[Theory]` data rows when validating ranges (see `SettingsServiceTests.cs`). Coverage must stay at or above 80% line/branch/method; Codecov reports gate PRs. When tests create temp files, clean them in `IDisposable.Dispose` like existing fixtures.
+### テストガイドライン
+xUnit と FluentAssertions を用いて `winui3/WSLKernelWatcher.WinUI3.Tests` でテストを実行します。テスト名のパターンは `MethodName_ShouldExpectation` を踏襲し、範囲検証には `[Theory]` とデータ行を活用してください（例: `SettingsServiceTests.cs`）。カバレッジは行/分岐/メソッドの各項目で 80% 以上を維持する必要があります（Codecov が PR をゲートします）。テストが一時ファイルを作成する場合は `IDisposable.Dispose` で必ずクリーンアップしてください。
 
-## Commit & Pull Request Guidelines
-Adopt the existing Conventional Commit shorthand (`feat:`, `chore:`, `fix:`, `docs:`) visible in `git log`. Each commit should be scoped to a logical unit and pass hooks; use `--no-verify` only when justified in the PR. PRs need: clear summary, linked GitHub issue or discussion, screenshots/GIFs for UX changes, and notes on testing (`dotnet test`, manual tray smoke test). Ensure CI is green and reference `SECURITY.md` for disclosure-sensitive fixes before requesting review.
+### コミットとプルリクエストのガイドライン
+コミットメッセージは既存の Conventional Commit（例: `feat:`, `chore:`, `fix:`, `docs:`） に従ってください。各コミットは論理的なスコープにまとめ、フックが通ることを確認してください。`--no-verify` は PR 内で正当化できる場合のみ使用してください。PR には次を含めてください: 明確な概要、関連する GitHub issue や議論へのリンク、UX 変更の場合はスクリーンショットや GIF、そしてテスト（`dotnet test`、手動のトレイ動作確認など）の説明。CI がグリーンであることを確認し、機密修正は `SECURITY.md` に従っているか確認した上でレビューを依頼してください。
 
-## Security & Configuration Tips
-Secrets never belong in source; prefer user-level settings at `%LocalAppData%\WSLKernelWatcher\settings.json`. Scripts assume a Windows host—call them from an elevated PowerShell when editing Task Scheduler entries. Keep dependencies updated via Renovate, but review manifest changes in `winui3/Directory.Packages.props` to avoid breaking WinUI SDK compatibility.
+### セキュリティと設定のヒント
+シークレット（API トークン等）はソースコードに含めないでください。ユーザ固有の設定は `%LocalAppData%\WSLKernelWatcher\settings.json` を使用することを推奨します。スクリプトは Windows ホストを前提としているため、タスクスケジューラーへ登録・変更する場合は管理者権限の PowerShell から実行してください。依存関係は Renovate 等で最新化してください。ただし、`winui3/Directory.Packages.props` でのマニフェスト変更は WinUI SDK の互換性を壊す恐れがあるため慎重にレビューしてください。

@@ -2,11 +2,13 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
+[ExcludeFromCodeCoverage]
 internal sealed class TrayIconService : IDisposable
 {
     private const int WMAPP = 0x8000;

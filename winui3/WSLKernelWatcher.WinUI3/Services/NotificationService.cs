@@ -3,11 +3,13 @@
 // </copyright>
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
+[ExcludeFromCodeCoverage]
 internal sealed class NotificationService
 {
     private bool initialized;

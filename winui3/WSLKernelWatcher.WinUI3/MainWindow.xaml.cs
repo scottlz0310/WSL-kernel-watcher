@@ -4,6 +4,7 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -14,6 +15,7 @@ using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3;
 
+[ExcludeFromCodeCoverage]
 internal sealed partial class MainWindow : Window
 {
     private readonly KernelWatcherService service;

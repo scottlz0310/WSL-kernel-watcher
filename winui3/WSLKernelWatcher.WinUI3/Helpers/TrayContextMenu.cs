@@ -2,10 +2,12 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace WSLKernelWatcher.WinUI3.Helpers;
 
+[ExcludeFromCodeCoverage]
 internal sealed class TrayContextMenu : IDisposable
 {
     private const int MFSTRING = 0x00000000;

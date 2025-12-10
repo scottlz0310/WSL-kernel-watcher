@@ -3,12 +3,14 @@
 // </copyright>
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace WSLKernelWatcher.WinUI3.Services;
 
+[ExcludeFromCodeCoverage]
 internal sealed class KernelWatcherService : IAsyncDisposable
 {
     private readonly TimeSpan interval;

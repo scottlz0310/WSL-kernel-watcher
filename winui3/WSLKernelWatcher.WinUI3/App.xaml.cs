@@ -2,12 +2,14 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3;
 
+[ExcludeFromCodeCoverage]
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1515", Justification = "WinUI entry point requires public accessibility")]
 public partial class App : Application
 {

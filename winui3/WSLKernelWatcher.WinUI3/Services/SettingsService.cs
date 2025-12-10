@@ -8,6 +8,7 @@ namespace WSLKernelWatcher.WinUI3.Services;
 
 internal sealed class SettingsService
 {
+    private readonly string settingsDirectory;
     private readonly string settingsPath;
     private readonly AppSettings settings;
 
@@ -16,11 +17,20 @@ internal sealed class SettingsService
     public event EventHandler? SettingsChanged;
 
     public SettingsService()
+        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WSLKernelWatcher"))
     {
-        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string appFolder = Path.Combine(appDataPath, "WSLKernelWatcher");
-        Directory.CreateDirectory(appFolder);
-        this.settingsPath = Path.Combine(appFolder, "settings.json");
+    }
+
+    internal SettingsService(string settingsDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(settingsDirectory))
+        {
+            throw new ArgumentException("設定保存先のディレクトリが不正です。", nameof(settingsDirectory));
+        }
+
+        this.settingsDirectory = settingsDirectory;
+        Directory.CreateDirectory(this.settingsDirectory);
+        this.settingsPath = Path.Combine(this.settingsDirectory, "settings.json");
 
         this.settings = this.LoadSettings();
     }
