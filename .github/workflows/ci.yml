@@ -2,86 +2,86 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: '8.0.x'
-  SOLUTION_PATH: 'winui3/WSLKernelWatcher.WinUI3.sln'
+  DOTNET_VERSION: "8.0.x"
+  SOLUTION_PATH: "winui3/WSLKernelWatcher.WinUI3.sln"
 
 jobs:
   build-and-test:
     runs-on: windows-2022
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Install dependencies
-      run: dotnet restore ${{ env.SOLUTION_PATH }}
+      - name: Install dependencies
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
 
-    - name: Build solution
-      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
+      - name: Build solution
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
 
-    - name: Run tests with coverage
-      run: |
-        foreach ($type in @("line", "branch", "method")) {
-          Write-Host "Running tests with coverage (type: $type)..."
-          dotnet test ${{ env.SOLUTION_PATH }} `
-            --configuration Release `
-            --no-build `
-            --verbosity normal `
-            --collect:"XPlat Code Coverage" `
-            --results-directory ./coverage `
-            /p:CollectCoverage=true `
-            /p:CoverletOutputFormat=opencover `
-            "/p:ThresholdType=$type" `
-            /p:Threshold=80
+      - name: Run tests with coverage
+        run: |
+          foreach ($type in @("line", "branch", "method")) {
+            Write-Host "Running tests with coverage (type: $type)..."
+            dotnet test ${{ env.SOLUTION_PATH }} `
+              --configuration Release `
+              --no-build `
+              --verbosity normal `
+              --collect:"XPlat Code Coverage" `
+              --results-directory ./coverage `
+              /p:CollectCoverage=true `
+              /p:CoverletOutputFormat=opencover `
+              "/p:ThresholdType=$type" `
+              /p:Threshold=80
 
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
           }
-        }
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        directory: ./coverage
-        fail_ci_if_error: true
-        token: ${{ secrets.CODECOV_TOKEN }}
-        flags: unittests
-        name: codecov-umbrella
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          directory: ./coverage
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          name: codecov-umbrella
 
-    - name: Code Analysis
-      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
+      - name: Code Analysis
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
 
   lint:
     runs-on: windows-2022
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Install dotnet format
-      run: dotnet tool install -g dotnet-format
+      - name: Install dotnet format
+        run: dotnet tool install -g dotnet-format
 
-    - name: Run dotnet format
-      run: dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --verbosity diagnostic
-      continue-on-error: false
+      - name: Run dotnet format
+        run: dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --verbosity diagnostic
+        continue-on-error: false
 
   security-scan:
     runs-on: windows-2022
@@ -90,29 +90,29 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
-      with:
-        languages: csharp
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
 
-    - name: Restore for CodeQL
-      run: dotnet restore ${{ env.SOLUTION_PATH }}
+      - name: Restore for CodeQL
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
 
-    - name: Prepare WinRT generator output folders
-      run: |
-        $base = Join-Path "winui3/WSLKernelWatcher.WinUI3" "obj/x64/Release/net10.0-windows10.0.22621.0/generated/WinRT.SourceGenerator/Generator.WinRTAotSourceGenerator"
-        New-Item -ItemType Directory -Force -Path $base | Out-Null
+      - name: Prepare WinRT generator output folders
+        run: |
+          $base = Join-Path "winui3/WSLKernelWatcher.WinUI3" "obj/x64/Release/net10.0-windows10.0.22621.0/generated/WinRT.SourceGenerator/Generator.WinRTAotSourceGenerator"
+          New-Item -ItemType Directory -Force -Path $base | Out-Null
 
-    - name: Build for CodeQL
-      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
+      - name: Build for CodeQL
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
