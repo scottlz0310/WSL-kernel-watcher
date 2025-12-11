@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.WinUI.Notifications" />
     <PackageReference Include="System.Drawing.Common" />
 
@@ -48,6 +47,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IncludeWindowsSdkBuildTools)' != 'false'">
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

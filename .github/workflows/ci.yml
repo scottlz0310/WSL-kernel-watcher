@@ -112,7 +112,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $base | Out-Null
 
       - name: Build for CodeQL
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
