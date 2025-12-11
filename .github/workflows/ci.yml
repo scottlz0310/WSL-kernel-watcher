@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-and-test:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
     - name: Checkout code
@@ -33,7 +33,24 @@ jobs:
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
 
     - name: Run tests with coverage
-      run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Threshold=80 /p:ThresholdType=line,branch,method
+      run: |
+        foreach ($type in @("line", "branch", "method")) {
+          Write-Host "Running tests with coverage (type: $type)..."
+          dotnet test ${{ env.SOLUTION_PATH }} `
+            --configuration Release `
+            --no-build `
+            --verbosity normal `
+            --collect:"XPlat Code Coverage" `
+            --results-directory ./coverage `
+            /p:CollectCoverage=true `
+            /p:CoverletOutputFormat=opencover `
+            "/p:ThresholdType=$type" `
+            /p:Threshold=80
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+        }
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -48,7 +65,7 @@ jobs:
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
 
   lint:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
     - name: Checkout code
@@ -67,7 +84,7 @@ jobs:
       continue-on-error: false
 
   security-scan:
-    runs-on: windows-latest
+    runs-on: windows-2022
     permissions:
       security-events: write
       contents: read
@@ -81,16 +98,21 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Run security scan
-      uses: security-code-scan/security-code-scan-add-action@main
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: csharp
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+    - name: Restore for CodeQL
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Prepare WinRT generator output folders
+      run: |
+        $base = Join-Path "winui3/WSLKernelWatcher.WinUI3" "obj/x64/Release/net10.0-windows10.0.22621.0/generated/WinRT.SourceGenerator/Generator.WinRTAotSourceGenerator"
+        New-Item -ItemType Directory -Force -Path $base | Out-Null
+
+    - name: Build for CodeQL
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

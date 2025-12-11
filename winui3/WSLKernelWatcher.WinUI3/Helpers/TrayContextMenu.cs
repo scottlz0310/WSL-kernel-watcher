@@ -10,11 +10,11 @@ namespace WSLKernelWatcher.WinUI3.Helpers;
 [ExcludeFromCodeCoverage]
 internal sealed class TrayContextMenu : IDisposable
 {
-    private const int MFSTRING = 0x00000000;
-    private const int MFSEPARATOR = 0x00000800;
-    private const int TPMLEFTALIGN = 0x0000;
-    private const int TPMBOTTOMALIGN = 0x0020;
-    private const int TPMRETURNCMD = 0x0100;
+    private const int _mfString = 0x00000000;
+    private const int _mfSeparator = 0x00000800;
+    private const int _tpmLeftAlign = 0x0000;
+    private const int _tpmBottomAlign = 0x0020;
+    private const int _tpmReturnCmd = 0x0100;
     private nint _hMenu;
     private readonly Dictionary<int, Action> _menuActions = new();
     private int _nextCommandId = 1000; // Start from 1000 to avoid conflicts
@@ -40,7 +40,7 @@ internal sealed class TrayContextMenu : IDisposable
     [DllImport("user32.dll")]
     private static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
 
-    private const uint WMNULL = 0x0000;
+    private const uint _wmNull = 0x0000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
@@ -51,19 +51,19 @@ internal sealed class TrayContextMenu : IDisposable
 
     public TrayContextMenu()
     {
-        this._hMenu = CreatePopupMenu();
+        _hMenu = CreatePopupMenu();
     }
 
     public void AddMenuItem(string text, Action action)
     {
-        int commandId = this._nextCommandId++;
-        AppendMenu(this._hMenu, MFSTRING, new nint(commandId), text);
-        this._menuActions[commandId] = action;
+        int commandId = _nextCommandId++;
+        AppendMenu(_hMenu, _mfString, new nint(commandId), text);
+        _menuActions[commandId] = action;
     }
 
     public void AddSeparator()
     {
-        AppendMenu(this._hMenu, MFSEPARATOR, nint.Zero, string.Empty);
+        AppendMenu(_hMenu, _mfSeparator, nint.Zero, string.Empty);
     }
 
     public void Show(nint hwnd)
@@ -72,12 +72,12 @@ internal sealed class TrayContextMenu : IDisposable
         GetCursorPos(out POINT pt);
 
         // TPM_RETURNCMD makes TrackPopupMenu return the selected command ID directly
-        int selectedId = TrackPopupMenu(this._hMenu, TPMLEFTALIGN | TPMBOTTOMALIGN | TPMRETURNCMD, pt.X, pt.Y, 0, hwnd, nint.Zero);
+        int selectedId = TrackPopupMenu(_hMenu, _tpmLeftAlign | _tpmBottomAlign | _tpmReturnCmd, pt.X, pt.Y, 0, hwnd, nint.Zero);
 
         // Post a message to ensure the menu is properly closed
-        PostMessage(hwnd, WMNULL, nint.Zero, nint.Zero);
+        PostMessage(hwnd, _wmNull, nint.Zero, nint.Zero);
 
-        if (selectedId > 0 && this._menuActions.TryGetValue(selectedId, out Action? action))
+        if (selectedId > 0 && _menuActions.TryGetValue(selectedId, out Action? action))
         {
             action?.Invoke();
         }
@@ -85,7 +85,7 @@ internal sealed class TrayContextMenu : IDisposable
 
     public bool ProcessCommand(int commandId)
     {
-        if (this._menuActions.TryGetValue(commandId, out Action? action))
+        if (_menuActions.TryGetValue(commandId, out Action? action))
         {
             action?.Invoke();
             return true;
@@ -96,10 +96,10 @@ internal sealed class TrayContextMenu : IDisposable
 
     public void Dispose()
     {
-        if (this._hMenu != nint.Zero)
+        if (_hMenu != nint.Zero)
         {
-            DestroyMenu(this._hMenu);
-            this._hMenu = nint.Zero;
+            DestroyMenu(_hMenu);
+            _hMenu = nint.Zero;
         }
     }
 }

@@ -29,7 +29,6 @@ repos:
         name: dotnet format
         entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-format.ps1
         language: system
-        types: [c-sharp]
         pass_filenames: false
 
       - id: dotnet-build
@@ -37,11 +36,11 @@ repos:
         entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-build.ps1
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: dotnet-test
         name: dotnet test
         entry: powershell.exe -ExecutionPolicy Bypass -File scripts/hooks/pre-commit-test.ps1
         language: system
         pass_filenames: false
-        stages: [push]
+        stages: [pre-push]

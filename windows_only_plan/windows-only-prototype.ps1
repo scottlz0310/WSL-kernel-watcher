@@ -57,20 +57,20 @@ function Get-LatestKernelVersion {
 
 function Compare-KernelVersions {
     param([string]$Current, [string]$Latest)
-    
+
     if (-not $Current -or -not $Latest) {
         return $false
     }
-    
+
     # バージョン文字列から数値部分を抽出
     $CurrentVersion = [regex]::Match($Current, '(\d+\.\d+\.\d+\.\d+)').Groups[1].Value
     $LatestVersion = [regex]::Match($Latest, '(\d+\.\d+\.\d+\.\d+)').Groups[1].Value
-    
+
     if (-not $CurrentVersion -or -not $LatestVersion) {
         Write-Log "バージョン解析失敗: Current=$Current, Latest=$Latest" "WARN"
         return $false
     }
-    
+
     try {
         $CurrentVer = [System.Version]$CurrentVersion
         $LatestVer = [System.Version]$LatestVersion
@@ -86,7 +86,7 @@ function Compare-KernelVersions {
 
 function Send-UpdateNotification {
     param([string]$CurrentVersion, [string]$LatestVersion)
-    
+
     try {
         # BurntToastが利用可能かチェック
         if (-not (Get-Module -ListAvailable -Name BurntToast)) {
@@ -101,7 +101,7 @@ function Send-UpdateNotification {
             )
             return
         }
-        
+
         # BurntToastを使用した高度な通知
         Import-Module BurntToast
         $Text1 = New-BTText -Content "WSL2カーネル更新通知"
@@ -110,7 +110,7 @@ function Send-UpdateNotification {
         $Binding = New-BTBinding -Children $Text1, $Text2, $Text3
         $Visual = New-BTVisual -BindingGeneric $Binding
         $Content = New-BTContent -Visual $Visual
-        
+
         Submit-BTNotification -Content $Content
         Write-Log "通知を送信しました: $CurrentVersion → $LatestVersion"
     }
@@ -124,15 +124,15 @@ function Install-TaskScheduler {
         # pwshの存在確認（フォールバックとしてpowershell.exeを使用）
         $Executor = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { "pwsh.exe" } else { "PowerShell.exe" }
         Write-Log "タスクスケジューラ実行環境: $Executor"
-        
+
         $Action = New-ScheduledTaskAction -Execute $Executor -Argument "-File `"$PSCommandPath`""
         $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 2) -RepetitionDuration (New-TimeSpan -Days 9999)
         $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
-        
+
         Register-ScheduledTask -TaskName $Config.TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal -Force
         Write-Log "タスクスケジューラに登録しました: $($Config.TaskName) (実行環境: $Executor)"
-        
+
         # BurntToastのインストール確認
         if (-not (Get-Module -ListAvailable -Name BurntToast)) {
             Write-Log "BurntToastモジュールをインストールしています..."
@@ -168,7 +168,7 @@ function Test-VersionComparison {
         @{ Current = "5.15.90.1-microsoft-standard-WSL2"; Latest = "linux-msft-wsl-5.15.90.1"; Expected = $false },
         @{ Current = "6.0.0.1-microsoft-standard-WSL2"; Latest = "linux-msft-wsl-5.15.95.1"; Expected = $false }
     )
-    
+
     $PassCount = 0
     foreach ($Case in $TestCases) {
         $Result = Compare-KernelVersions -Current $Case.Current -Latest $Case.Latest
@@ -226,7 +226,7 @@ function Test-NotificationSystem {
         } else {
             Write-Host "  [INFO] BurntToastモジュール未インストール（標準通知を使用）" -ForegroundColor Yellow
         }
-        
+
         # 通知テスト実行
         Write-Host "  [INFO] テスト通知を送信中..." -ForegroundColor Blue
         Send-UpdateNotification -CurrentVersion "5.15.90.1-test" -LatestVersion "5.15.95.1-test"
@@ -265,7 +265,7 @@ function Test-LogSystem {
     try {
         $TestMessage = "テストログメッセージ - $(Get-Date)"
         Write-Log $TestMessage "TEST"
-        
+
         if (Test-Path $Config.LogPath) {
             $LogContent = Get-Content $Config.LogPath -Tail 1
             if ($LogContent -like "*$TestMessage*") {
@@ -285,7 +285,7 @@ function Test-LogSystem {
 function Invoke-AllTests {
     Write-Host "`n🧪 WSL Kernel Update Notifier - 機能テスト実行" -ForegroundColor Magenta
     Write-Host ("=" * 50) -ForegroundColor Magenta
-    
+
     $TestResults = @()
     $TestResults += Test-LogSystem
     $TestResults += Test-VersionComparison
@@ -293,41 +293,41 @@ function Invoke-AllTests {
     $TestResults += Test-GitHubAPI
     $TestResults += Test-NotificationSystem
     $TestResults += Test-TaskScheduler
-    
+
     $PassCount = ($TestResults | Where-Object { $_ -eq $true }).Count
     $TotalCount = $TestResults.Count
-    
+
     Write-Host ("`n" + ("=" * 50)) -ForegroundColor Magenta
     Write-Host "📊 テスト結果: $PassCount/$TotalCount 通過" -ForegroundColor $(if ($PassCount -eq $TotalCount) { "Green" } else { "Yellow" })
-    
+
     if ($PassCount -eq $TotalCount) {
         Write-Host "✅ すべてのテストが通過しました！" -ForegroundColor Green
     } else {
         Write-Host "⚠️  一部のテストが失敗しました。上記の詳細を確認してください。" -ForegroundColor Yellow
     }
-    
+
     return $PassCount -eq $TotalCount
 }
 
 # メイン処理
 function Main {
     Write-Log "WSL Kernel Update Notifier 開始"
-    
+
     if ($Install) {
         Install-TaskScheduler
         return
     }
-    
+
     if ($Uninstall) {
         Uninstall-TaskScheduler
         return
     }
-    
+
     if ($Test) {
         Test-Notification
         return
     }
-    
+
     if ($RunTests -or $TestAll) {
         $TestResult = Invoke-AllTests
         if ($TestAll) {
@@ -337,27 +337,27 @@ function Main {
             return
         }
     }
-    
+
     # 通常のチェック処理
     $CurrentVersion = Get-WSLKernelVersion
     if (-not $CurrentVersion) {
         Write-Log "WSLが利用できません。処理を終了します。" "ERROR"
         return
     }
-    
+
     $LatestVersion = Get-LatestKernelVersion
     if (-not $LatestVersion) {
         Write-Log "最新バージョンの取得に失敗しました。処理を終了します。" "ERROR"
         return
     }
-    
+
     if (Compare-KernelVersions -Current $CurrentVersion -Latest $LatestVersion) {
         Write-Log "新しいバージョンが検出されました。通知を送信します。"
         Send-UpdateNotification -CurrentVersion $CurrentVersion -LatestVersion $LatestVersion
     } else {
         Write-Log "最新バージョンです。通知は不要です。"
     }
-    
+
     Write-Log "WSL Kernel Update Notifier 完了"
 }
 

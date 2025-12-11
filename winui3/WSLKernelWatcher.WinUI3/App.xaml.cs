@@ -22,13 +22,13 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-        AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
+        AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
         AppNotificationManager.Default.Register();
-        this._notificationService.Initialize();
+        _notificationService.Initialize();
 
         // Create watcher service with settings
-        var interval = TimeSpan.FromHours(this._settingsService.Settings.CheckIntervalHours);
-        this._watcherService = new KernelWatcherService(this._notificationService, this._loggingService, interval);
+        var interval = TimeSpan.FromHours(_settingsService.Settings.CheckIntervalHours);
+        _watcherService = new KernelWatcherService(_notificationService, _loggingService, interval);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -37,29 +37,29 @@ public partial class App : Application
         string[] commandLineArgs = Environment.GetCommandLineArgs();
         bool showWindow = !commandLineArgs.Contains("--tray") && !commandLineArgs.Contains("-t");
 
-        this._window = new MainWindow(this._watcherService, this._loggingService, this._settingsService, showWindow);
-        this._window.Closed += this.OnWindowClosed;
+        _window = new MainWindow(_watcherService, _loggingService, _settingsService, showWindow);
+        _window.Closed += OnWindowClosed;
 
         // Activate window if it should be shown
         if (showWindow)
         {
-            this._window.Activate();
+            _window.Activate();
         }
 
-        this._watcherService.Start();
+        _watcherService.Start();
     }
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        this._watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
+        _watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
     }
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)
     {
         // Show window when notification is clicked
-        if (this._window != null)
+        if (_window != null)
         {
-            this._window.DispatcherQueue.TryEnqueue(() => this._window.ShowWindowFromTray());
+            _window.DispatcherQueue.TryEnqueue(() => _window.ShowWindowFromTray());
         }
     }
 }

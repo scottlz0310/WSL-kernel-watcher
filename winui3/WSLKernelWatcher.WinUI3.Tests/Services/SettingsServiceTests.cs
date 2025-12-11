@@ -1,5 +1,5 @@
-using FluentAssertions;
 using System.Text.Json;
+using FluentAssertions;
 using WSLKernelWatcher.WinUI3.Services;
 
 namespace WSLKernelWatcher.WinUI3.Tests.Services;

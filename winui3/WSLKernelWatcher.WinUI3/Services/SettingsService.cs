@@ -12,7 +12,7 @@ internal sealed class SettingsService
     private readonly string _settingsPath;
     private readonly AppSettings _settings;
 
-    public AppSettings Settings => this._settings;
+    public AppSettings Settings => _settings;
 
     public event EventHandler? SettingsChanged;
 
@@ -28,20 +28,20 @@ internal sealed class SettingsService
             throw new ArgumentException("設定保存先のディレクトリが不正です。", nameof(settingsDirectory));
         }
 
-        this._settingsDirectory = settingsDirectory;
-        Directory.CreateDirectory(this._settingsDirectory);
-        this._settingsPath = Path.Combine(this._settingsDirectory, "settings.json");
+        _settingsDirectory = settingsDirectory;
+        Directory.CreateDirectory(_settingsDirectory);
+        _settingsPath = Path.Combine(_settingsDirectory, "settings.json");
 
-        this._settings = this.LoadSettings();
+        _settings = LoadSettings();
     }
 
     private AppSettings LoadSettings()
     {
         try
         {
-            if (File.Exists(this._settingsPath))
+            if (File.Exists(_settingsPath))
             {
-                string json = File.ReadAllText(this._settingsPath);
+                string json = File.ReadAllText(_settingsPath);
                 AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(json);
                 if (settings != null)
                 {
@@ -61,12 +61,12 @@ internal sealed class SettingsService
     {
         try
         {
-            string json = JsonSerializer.Serialize(this._settings, new JsonSerializerOptions
+            string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
             {
                 WriteIndented = true,
             });
-            File.WriteAllText(this._settingsPath, json);
-            this.SettingsChanged?.Invoke(this, EventArgs.Empty);
+            File.WriteAllText(_settingsPath, json);
+            SettingsChanged?.Invoke(this, EventArgs.Empty);
         }
         catch
         {
@@ -81,8 +81,8 @@ internal sealed class SettingsService
             throw new ArgumentOutOfRangeException(nameof(hours), "Check interval must be between 1 and 24 hours");
         }
 
-        this._settings.CheckIntervalHours = hours;
-        this.SaveSettings();
+        _settings.CheckIntervalHours = hours;
+        SaveSettings();
     }
 }
 

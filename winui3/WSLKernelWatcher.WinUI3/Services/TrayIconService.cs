@@ -11,19 +11,19 @@ namespace WSLKernelWatcher.WinUI3.Services;
 [ExcludeFromCodeCoverage]
 internal sealed class TrayIconService : IDisposable
 {
-    private const int WMAPP = 0x8000;
-    private const int WMTRAYICON = WMAPP + 1;
-    private const int NIMADD = 0x00000000;
-    private const int NIMMODIFY = 0x00000001;
-    private const int NIMDELETE = 0x00000002;
-    private const int NIFMESSAGE = 0x00000001;
-    private const int NIFICON = 0x00000002;
-    private const int NIFTIP = 0x00000004;
-    private const int WMLBUTTONUP = 0x0202;
-    private const int WMRBUTTONUP = 0x0205;
+    private const int _wmApp = 0x8000;
+    private const int _wmTrayIcon = _wmApp + 1;
+    private const int _nimAdd = 0x00000000;
+    private const int _nimModify = 0x00000001;
+    private const int _nimDelete = 0x00000002;
+    private const int _nifMessage = 0x00000001;
+    private const int _nifIcon = 0x00000002;
+    private const int _nifTip = 0x00000004;
+    private const int _wmLButtonUp = 0x0202;
+    private const int _wmRButtonUp = 0x0205;
 
     private readonly nint _hwnd;
-    private readonly uint _callbackMessage = WMTRAYICON;
+    private readonly uint _callbackMessage = _wmTrayIcon;
     private bool _isAdded;
     private nint _hIcon;
 
@@ -59,17 +59,17 @@ internal sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(nint hIcon);
 
-    private const uint IMAGEICON = 1;
-    private const uint LRLOADFROMFILE = 0x00000010;
+    private const uint _imageIcon = 1;
+    private const uint _lrLoadFromFile = 0x00000010;
 
     public TrayIconService(Window window)
     {
-        this._hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
     }
 
     public bool AddIcon(string tooltip)
     {
-        if (this._isAdded)
+        if (_isAdded)
         {
             return true;
         }
@@ -78,34 +78,34 @@ internal sealed class TrayIconService : IDisposable
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "wsl_watcher_icon.ico");
         if (File.Exists(iconPath))
         {
-            this._hIcon = LoadImage(nint.Zero, iconPath, IMAGEICON, 16, 16, LRLOADFROMFILE);
+            _hIcon = LoadImage(nint.Zero, iconPath, _imageIcon, 16, 16, _lrLoadFromFile);
         }
 
         // Fallback to default application icon if custom icon fails to load
-        if (this._hIcon == nint.Zero)
+        if (_hIcon == nint.Zero)
         {
             nint hInstance = GetModuleHandle(null);
-            this._hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
+            _hIcon = LoadIcon(hInstance, new nint(32512)); // IDI_APPLICATION
         }
 
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this._hwnd,
+            HWnd = _hwnd,
             UID = 1,
-            UFlags = NIFMESSAGE | NIFICON | NIFTIP,
-            UCallbackMessage = this._callbackMessage,
-            HIcon = this._hIcon,
+            UFlags = _nifMessage | _nifIcon | _nifTip,
+            UCallbackMessage = _callbackMessage,
+            HIcon = _hIcon,
             SzTip = tooltip,
         };
 
-        this._isAdded = Shell_NotifyIcon(NIMADD, ref nid);
-        return this._isAdded;
+        _isAdded = Shell_NotifyIcon(_nimAdd, ref nid);
+        return _isAdded;
     }
 
     public bool UpdateTooltip(string tooltip)
     {
-        if (!this._isAdded)
+        if (!_isAdded)
         {
             return false;
         }
@@ -113,18 +113,18 @@ internal sealed class TrayIconService : IDisposable
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this._hwnd,
+            HWnd = _hwnd,
             UID = 1,
-            UFlags = NIFTIP,
+            UFlags = _nifTip,
             SzTip = tooltip,
         };
 
-        return Shell_NotifyIcon(NIMMODIFY, ref nid);
+        return Shell_NotifyIcon(_nimModify, ref nid);
     }
 
     public bool RemoveIcon()
     {
-        if (!this._isAdded)
+        if (!_isAdded)
         {
             return true;
         }
@@ -132,28 +132,28 @@ internal sealed class TrayIconService : IDisposable
         var nid = new NOTIFYICONDATA
         {
             CbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            HWnd = this._hwnd,
+            HWnd = _hwnd,
             UID = 1,
         };
 
-        this._isAdded = !Shell_NotifyIcon(NIMDELETE, ref nid);
-        return !this._isAdded;
+        _isAdded = !Shell_NotifyIcon(_nimDelete, ref nid);
+        return !_isAdded;
     }
 
     public bool ProcessWindowMessage(uint msg, nint wParam, nint lParam)
     {
-        if (msg != this._callbackMessage)
+        if (msg != _callbackMessage)
         {
             return false;
         }
 
         switch (lParam.ToInt32())
         {
-            case WMLBUTTONUP:
-                this.LeftClick?.Invoke(this, EventArgs.Empty);
+            case _wmLButtonUp:
+                LeftClick?.Invoke(this, EventArgs.Empty);
                 return true;
-            case WMRBUTTONUP:
-                this.RightClick?.Invoke(this, EventArgs.Empty);
+            case _wmRButtonUp:
+                RightClick?.Invoke(this, EventArgs.Empty);
                 return true;
         }
 
@@ -162,11 +162,11 @@ internal sealed class TrayIconService : IDisposable
 
     public void Dispose()
     {
-        this.RemoveIcon();
-        if (this._hIcon != nint.Zero)
+        RemoveIcon();
+        if (_hIcon != nint.Zero)
         {
-            DestroyIcon(this._hIcon);
-            this._hIcon = nint.Zero;
+            DestroyIcon(_hIcon);
+            _hIcon = nint.Zero;
         }
     }
 }

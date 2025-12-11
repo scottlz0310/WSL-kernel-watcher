@@ -9,7 +9,7 @@ namespace WSLKernelWatcher.WinUI3.Services;
 
 internal sealed class LoggingService
 {
-    private const long DefaultMaxBytes = 1_000_000; // 1MB
+    private const long _defaultMaxBytes = 1_000_000; // 1MB
     private readonly string _logDirectory;
     private readonly string _logFilePath;
     private readonly long _maxBytes;
@@ -17,11 +17,11 @@ internal sealed class LoggingService
     public event EventHandler<string>? LogAppended;
 
     public LoggingService()
-        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WSLKernelWatcher", "logs"), DefaultMaxBytes)
+        : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WSLKernelWatcher", "logs"), _defaultMaxBytes)
     {
     }
 
-    internal LoggingService(string logDirectory, long maxBytes = DefaultMaxBytes)
+    internal LoggingService(string logDirectory, long maxBytes = _defaultMaxBytes)
     {
         if (string.IsNullOrWhiteSpace(logDirectory))
         {
@@ -33,39 +33,39 @@ internal sealed class LoggingService
             throw new ArgumentOutOfRangeException(nameof(maxBytes), "ログファイルの最大サイズは 1 バイト以上である必要があります。");
         }
 
-        this._logDirectory = logDirectory;
-        this._maxBytes = maxBytes;
-        Directory.CreateDirectory(this._logDirectory);
-        this._logFilePath = Path.Combine(this._logDirectory, "winui3.log");
+        _logDirectory = logDirectory;
+        _maxBytes = maxBytes;
+        Directory.CreateDirectory(_logDirectory);
+        _logFilePath = Path.Combine(_logDirectory, "winui3.log");
     }
 
-    public string LogDirectory => this._logDirectory;
+    public string LogDirectory => _logDirectory;
 
     public async Task WriteAsync(string message)
     {
         string line = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}] {message}";
-        await this.RotateIfNeededAsync().ConfigureAwait(false);
+        await RotateIfNeededAsync().ConfigureAwait(false);
         try
         {
-            await File.AppendAllTextAsync(this._logFilePath, line + Environment.NewLine).ConfigureAwait(false);
+            await File.AppendAllTextAsync(_logFilePath, line + Environment.NewLine).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to write log: {ex.Message}");
         }
 
-        this.LogAppended?.Invoke(this, line);
+        LogAppended?.Invoke(this, line);
     }
 
     private Task RotateIfNeededAsync()
     {
         try
         {
-            var info = new FileInfo(this._logFilePath);
-            if (info.Exists && info.Length > this._maxBytes)
+            var info = new FileInfo(_logFilePath);
+            if (info.Exists && info.Length > _maxBytes)
             {
-                string archive = Path.Combine(this._logDirectory, $"winui3-{DateTimeOffset.Now:yyyyMMddHHmmss}.log");
-                File.Move(this._logFilePath, archive, true);
+                string archive = Path.Combine(_logDirectory, $"winui3-{DateTimeOffset.Now:yyyyMMddHHmmss}.log");
+                File.Move(_logFilePath, archive, true);
             }
         }
         catch (Exception ex)

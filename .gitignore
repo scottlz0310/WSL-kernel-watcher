@@ -225,3 +225,6 @@ packages/
 project.fragment.lock.json
 project.lock.json
 publish/
+
+# Test coverage outputs
+winui3/WSLKernelWatcher.WinUI3.Tests/coverage*.xml

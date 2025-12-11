@@ -16,13 +16,13 @@ internal sealed class NotificationService
 
     public void Initialize()
     {
-        if (this._initialized)
+        if (_initialized)
         {
             return;
         }
 
-        AppNotificationManager.Default.NotificationInvoked += this.OnNotificationInvoked;
-        this._initialized = true;
+        AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
+        _initialized = true;
     }
 
     public void NotifyUpdateAvailable(string current, string latest)

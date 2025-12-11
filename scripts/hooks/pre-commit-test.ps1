@@ -14,28 +14,31 @@ $solutionPath = "winui3/WSLKernelWatcher.WinUI3.sln"
 Write-Host "Running tests with coverage..." -ForegroundColor Cyan
 
 try {
-    # Run tests with coverage
-    $output = dotnet test $solutionPath `
-        --configuration Release `
-        --no-build `
-        --nologo `
-        --verbosity quiet `
-        /p:CollectCoverage=true `
-        /p:Threshold=80 `
-        /p:ThresholdType=line,branch,method 2>&1
+    foreach ($type in @("line", "branch", "method")) {
+        Write-Host "Running tests with coverage (type: $type)..." -ForegroundColor Cyan
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ""
-        Write-Host "ERROR: Tests failed or coverage is below 80%!" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Output:" -ForegroundColor Yellow
-        Write-Host $output
-        Write-Host ""
-        Write-Host "Please fix the failing tests or increase coverage before pushing." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "To run tests locally:" -ForegroundColor Cyan
-        Write-Host "  dotnet test $solutionPath --configuration Release" -ForegroundColor White
-        exit 1
+        $output = dotnet test $solutionPath `
+            --configuration Release `
+            --no-build `
+            --nologo `
+            --verbosity quiet `
+            "/p:CollectCoverage=true" `
+            "/p:Threshold=80" `
+            "/p:ThresholdType=$type" 2>&1
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Host "ERROR: Tests failed or coverage is below 80% for '$type'!" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Output:" -ForegroundColor Yellow
+            Write-Host $output
+            Write-Host ""
+            Write-Host "Please fix the failing tests or increase coverage before pushing." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "To run tests locally:" -ForegroundColor Cyan
+            Write-Host "  dotnet test $solutionPath --configuration Release" -ForegroundColor White
+            exit 1
+        }
     }
 
     Write-Host "✓ All tests passed with sufficient coverage" -ForegroundColor Green
