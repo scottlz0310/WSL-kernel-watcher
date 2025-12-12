@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-and-test:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
       - name: Checkout code
@@ -28,11 +28,21 @@ jobs:
             8.0.x
             10.0.x
 
+      - name: Install Windows SDK
+        run: |
+          # Check available SDKs
+          Write-Host "Checking for installed Windows SDKs..."
+          if (Test-Path "C:\Program Files (x86)\Windows Kits\10") {
+            Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" | Select-Object Name
+          }
+          # Install Windows SDK 10.1 which includes 10.0.22621.0
+          choco install windows-sdk-10.1 -y --no-progress --force
+
       - name: Install dependencies
         run: dotnet restore ${{ env.SOLUTION_PATH }}
 
       - name: Build solution
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
       - name: Run tests with coverage
         run: |
@@ -64,10 +74,10 @@ jobs:
           name: codecov-umbrella
 
       - name: Code Analysis
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
   lint:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
       - name: Checkout code
@@ -88,7 +98,7 @@ jobs:
         continue-on-error: false
 
   security-scan:
-    runs-on: windows-2022
+    runs-on: windows-2025
     permissions:
       security-events: write
       contents: read
@@ -104,6 +114,16 @@ jobs:
             8.0.x
             10.0.x
 
+      - name: Install Windows SDK
+        run: |
+          # Check available SDKs
+          Write-Host "Checking for installed Windows SDKs..."
+          if (Test-Path "C:\Program Files (x86)\Windows Kits\10") {
+            Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" | Select-Object Name
+          }
+          # Install Windows SDK 10.1 which includes 10.0.22621.0
+          choco install windows-sdk-10.1 -y --no-progress --force
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -114,7 +134,7 @@ jobs:
 
       - name: Prepare WinRT generator output folders
         run: |
-          $base = Join-Path "winui3/WSLKernelWatcher.WinUI3" "obj/x64/Release/net10.0-windows10.0.22621.0/generated/WinRT.SourceGenerator/Generator.WinRTAotSourceGenerator"
+          $base = Join-Path "winui3/WSLKernelWatcher.WinUI3" "obj/x64/Release/net10.0-windows10.0.26100.0/generated/WinRT.SourceGenerator/Generator.WinRTAotSourceGenerator"
           New-Item -ItemType Directory -Force -Path $base | Out-Null
 
       - name: Build for CodeQL
