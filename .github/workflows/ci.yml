@@ -28,6 +28,10 @@ jobs:
             8.0.x
             10.0.x
 
+      - name: Install Windows SDK
+        run: |
+          choco install windows-sdk-10-version-2110-all -y --no-progress
+
       - name: Install dependencies
         run: dotnet restore ${{ env.SOLUTION_PATH }}
 
@@ -103,6 +107,10 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
+
+      - name: Install Windows SDK
+        run: |
+          choco install windows-sdk-10-version-2110-all -y --no-progress
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
