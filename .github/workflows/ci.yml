@@ -30,7 +30,13 @@ jobs:
 
       - name: Install Windows SDK
         run: |
-          choco install windows-sdk-10-version-2110-all -y --no-progress
+          # Check available SDKs
+          Write-Host "Checking for installed Windows SDKs..."
+          if (Test-Path "C:\Program Files (x86)\Windows Kits\10") {
+            Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" | Select-Object Name
+          }
+          # Install Windows SDK 10.1 which includes 10.0.22621.0
+          choco install windows-sdk-10.1 -y --no-progress --force
 
       - name: Install dependencies
         run: dotnet restore ${{ env.SOLUTION_PATH }}
@@ -110,7 +116,13 @@ jobs:
 
       - name: Install Windows SDK
         run: |
-          choco install windows-sdk-10-version-2110-all -y --no-progress
+          # Check available SDKs
+          Write-Host "Checking for installed Windows SDKs..."
+          if (Test-Path "C:\Program Files (x86)\Windows Kits\10") {
+            Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" | Select-Object Name
+          }
+          # Install Windows SDK 10.1 which includes 10.0.22621.0
+          choco install windows-sdk-10.1 -y --no-progress --force
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
