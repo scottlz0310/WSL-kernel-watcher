@@ -32,7 +32,7 @@ jobs:
         run: dotnet restore ${{ env.SOLUTION_PATH }}
 
       - name: Build solution
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
       - name: Run tests with coverage
         run: |
@@ -64,7 +64,7 @@ jobs:
           name: codecov-umbrella
 
       - name: Code Analysis
-        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true /p:Platform=x64 /p:IncludeWindowsSdkBuildTools=false
 
   lint:
     runs-on: windows-2025
