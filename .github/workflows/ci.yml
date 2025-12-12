@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-and-test:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
       - name: Checkout code
@@ -67,7 +67,7 @@ jobs:
         run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore /p:RunCodeAnalysis=true /p:TreatWarningsAsErrors=true
 
   lint:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
       - name: Checkout code
@@ -88,7 +88,7 @@ jobs:
         continue-on-error: false
 
   security-scan:
-    runs-on: windows-2022
+    runs-on: windows-2025
     permissions:
       security-events: write
       contents: read
