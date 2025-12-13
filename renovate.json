@@ -1,9 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>scottlz0310/renovate-config",
-    "github>scottlz0310/renovate-config:csharp",
-    "github>scottlz0310/renovate-config:cpp",
-    "github>scottlz0310/renovate-config:security"
+    "github>scottlz0310/renovate-config//presets/default",
+    "github>scottlz0310/renovate-config//presets/languages/python",
+    "github>scottlz0310/renovate-config//presets/languages/csharp",
+    "github>scottlz0310/renovate-config//presets/tools/precommit",
+    "github>scottlz0310/renovate-config//presets/options/automerge",
+    "github>scottlz0310/renovate-config//presets/options/security",
+    "github>scottlz0310/renovate-config//presets/options/monorepo",
+    "github>scottlz0310/renovate-config//presets/options/production",
+    "github>scottlz0310/renovate-config//presets/options/schedule"
   ]
 }
