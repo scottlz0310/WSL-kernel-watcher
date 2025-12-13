@@ -47,16 +47,38 @@ Write-Host ""
 
 # Function to find the executable
 function Find-Executable {
-    $searchPaths = @(
-        # Build output paths
-        "$PSScriptRoot\..\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe",
-        "$PSScriptRoot\..\winui3\WSLKernelWatcher.WinUI3\bin\x64\Debug\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe",
-        # Common installation paths
+    # Dynamic search for build output paths
+    $buildPaths = @(
+        @{
+            Base = "$PSScriptRoot\..\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release"
+            Priority = 1
+        },
+        @{
+            Base = "$PSScriptRoot\..\winui3\WSLKernelWatcher.WinUI3\bin\x64\Debug"
+            Priority = 2
+        }
+    )
+
+    # Search in build output directories
+    foreach ($buildPath in ($buildPaths | Sort-Object Priority)) {
+        if (Test-Path $buildPath.Base) {
+            $exe = Get-ChildItem -Path $buildPath.Base -Filter "WSLKernelWatcher.WinUI3.exe" -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($exe) {
+                return $exe.FullName
+            }
+        }
+    }
+
+    # Static paths for common installation locations
+    $installPaths = @(
         "$env:ProgramFiles\WSL Kernel Watcher\WSLKernelWatcher.WinUI3.exe",
         "$env:LOCALAPPDATA\WSL Kernel Watcher\WSLKernelWatcher.WinUI3.exe"
     )
 
-    foreach ($path in $searchPaths) {
+    foreach ($path in $installPaths) {
         if (Test-Path $path) {
             return (Resolve-Path $path).Path
         }
