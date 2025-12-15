@@ -43,7 +43,11 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 
 ### インストール（自動起動設定）
 
-ビルド後、タスクスケジューラに登録して自動起動できます:
+#### 配布物
+- リリースページに x64 向けのセットアップ Zip（`WSLKernelWatcher-Setup-<version>-x64.zip`）を公開しています。展開すると実行ファイルと `install.ps1` / `uninstall.ps1` が同梱されています。
+
+#### タスクスケジューラ登録
+PowerShell でインストールスクリプトを実行して自動起動を設定できます:
 
 ```powershell
 # 標準インストール（ログイン時にウィンドウ表示）
