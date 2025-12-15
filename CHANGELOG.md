@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2025-12-15
+
+### Changed
+- WinUI 3 アプリを .NET 10 + Windows App SDK 1.8 に更新し、サポート OS を Windows 11 24H2 以降に整理
+- ビルド/テスト/ドキュメントを 3.0.0 向けに整備し、手動起動パスを最新版に更新
+
+### Technical
+- CI パイプラインを .NET 10 / Windows App SDK 1.8 に追随
+
 ## [2.1.1] - 2025-01-20
 
 ### Fixed
@@ -158,6 +167,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - レート制限対応
 - リトライ機能
 
+[3.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.1.1...v3.0.0
+[2.1.1]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.0.0...v1.1.0

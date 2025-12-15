@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher)
 
-WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカーネルバージョンを監視し、更新があった場合に通知を行う常駐型軽量アプリケーションです。
+WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカーネルバージョンを監視し、更新があった場合に通知を行う常駐型軽量アプリケーションです（安定版: 3.0.0）。
 
 ## 機能
 
@@ -19,10 +19,10 @@ WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカ�
 
 ### 必要環境
 
-- Windows 10 (19041) 以降
-- .NET 8.0 SDK
-- Visual Studio 2022/2026 (WinUI3ワークロード含む)
-- Windows App SDK 1.7
+- Windows 11 24H2 (10.0.26100) 以降を推奨
+- .NET 10 SDK
+- Visual Studio 2026 (WinUI3ワークロード含む)
+- Windows App SDK 1.8
 
 ### ビルド方法
 
@@ -72,10 +72,10 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 
 ```powershell
 # ビルド後の実行ファイルを起動
-.\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe
+.\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net10.0-windows10.0.26100.0\WSLKernelWatcher.WinUI3.exe
 
 # トレイに最小化して起動
-.\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net8.0-windows10.0.19041.0\WSLKernelWatcher.WinUI3.exe --tray
+.\winui3\WSLKernelWatcher.WinUI3\bin\x64\Release\net10.0-windows10.0.26100.0\WSLKernelWatcher.WinUI3.exe --tray
 ```
 
 または、Visual Studioから `F5` でデバッグ実行できます。
