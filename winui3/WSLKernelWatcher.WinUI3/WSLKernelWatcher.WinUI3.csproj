@@ -61,4 +61,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- dotnet publish で .pri が含まれず起動できなくなるため、ビルド出力の PRI を配布物に同梱する -->
+  <Target Name="CopyPriToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <AppPriFile Include="$(OutDir)$(AssemblyName).pri" Condition="Exists('$(OutDir)$(AssemblyName).pri')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AppPriFile)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
