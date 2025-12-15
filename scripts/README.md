@@ -3,6 +3,7 @@
 ## インストール関連
 - `install.ps1`: アプリをタスクスケジューラに登録します。`-StartMinimized` でトレイ起動を指定可能、`-ExePath` で実行ファイルを明示できます。
 - `uninstall.ps1`: タスクスケジューラ登録を解除します。`-KeepSettings` を付けると設定ファイルを残します。
+- `create-shortcuts.ps1`: スタートメニュー/デスクトップにショートカットを作成します（`-Tray` でトレイ起動用、`-Desktop` でデスクトップにも配置）。
 
 ## 開発用フック
 - `scripts/hooks/pre-commit-format.ps1`: コミット前フォーマットチェック。

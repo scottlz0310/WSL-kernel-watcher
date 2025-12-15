@@ -82,7 +82,7 @@ jobs:
         $bundleDir = Join-Path -Path "." -ChildPath "installer/$platform"
         New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
         Copy-Item -Path "./publish/$platform/*" -Destination $bundleDir -Recurse -Force
-        Copy-Item -Path "scripts/install.ps1","scripts/uninstall.ps1" -Destination $bundleDir -Force
+        Copy-Item -Path "scripts/install.ps1","scripts/uninstall.ps1","scripts/create-shortcuts.ps1" -Destination $bundleDir -Force
         $installerArchive = "WSLKernelWatcher-Setup-$version-$platform.zip"
         Compress-Archive -Path "$bundleDir/*" -DestinationPath "./$installerArchive" -Force
         echo "INSTALLER_ARCHIVE=$installerArchive" >> $env:GITHUB_OUTPUT

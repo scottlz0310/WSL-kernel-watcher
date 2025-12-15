@@ -44,7 +44,7 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 ### インストール（自動起動設定）
 
 #### 配布物
-- リリースページに x64 向けのセットアップ Zip（`WSLKernelWatcher-Setup-<version>-x64.zip`）を公開しています。展開すると実行ファイルと `install.ps1` / `uninstall.ps1` が同梱されています。
+- リリースページ（例: https://github.com/scottlz0310/WSL-kernel-watcher/releases/latest ）に x64 向けのセットアップ Zip（`WSLKernelWatcher-Setup-<version>-x64.zip`）を公開しています。展開すると実行ファイルと `install.ps1` / `uninstall.ps1` / `create-shortcuts.ps1` が同梱されています。
 
 #### タスクスケジューラ登録
 PowerShell でインストールスクリプトを実行して自動起動を設定できます:
@@ -61,6 +61,17 @@ PowerShell でインストールスクリプトを実行して自動起動を設
 ```
 
 インストールすると、次回のログインから自動的に起動します。
+
+#### ショートカット作成（必要に応じて）
+展開したセットアップ Zip に含まれる `create-shortcuts.ps1` を使って、スタートメニューやデスクトップにショートカットを作成できます:
+
+```powershell
+# スタートメニューにショートカットを作成
+.\scripts\create-shortcuts.ps1
+
+# トレイ起動用ショートカットをスタートメニューとデスクトップに作成
+.\scripts\create-shortcuts.ps1 -Tray -Desktop
+```
 
 ### アンインストール
 
