@@ -93,6 +93,23 @@ public class AutoUpdateServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CheckForUpdatesAsync_ShouldReturnNoUpdateWhenTagIsWhitespace()
+    {
+        // Arrange
+        string json = """{"tag_name":"   ","html_url":"https://example/releases/v3.1.0"}""";
+        var handler = new FakeHandler(json, HttpStatusCode.OK);
+        using var httpClient = new HttpClient(handler);
+        var logging = new LoggingService(_logDir);
+        var service = new AutoUpdateService(logging, httpClient, new Version(3, 0, 0, 0));
+
+        // Act
+        AutoUpdateResult result = await service.CheckForUpdatesAsync(CancellationToken.None);
+
+        // Assert
+        result.HasUpdate.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CheckForUpdatesAsync_ShouldHandleInvalidVersion()
     {
         // Arrange
@@ -116,6 +133,22 @@ public class AutoUpdateServiceTests : IDisposable
         // Arrange
         const string json = "not-json";
         var handler = new FakeHandler(json, HttpStatusCode.OK);
+        using var httpClient = new HttpClient(handler);
+        var logging = new LoggingService(_logDir);
+        var service = new AutoUpdateService(logging, httpClient, new Version(3, 0, 0, 0));
+
+        // Act
+        AutoUpdateResult result = await service.CheckForUpdatesAsync(CancellationToken.None);
+
+        // Assert
+        result.HasUpdate.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CheckForUpdatesAsync_ShouldHandleHttpException()
+    {
+        // Arrange
+        var handler = new ThrowingHandler();
         using var httpClient = new HttpClient(handler);
         var logging = new LoggingService(_logDir);
         var service = new AutoUpdateService(logging, httpClient, new Version(3, 0, 0, 0));
@@ -181,6 +214,14 @@ public class AutoUpdateServiceTests : IDisposable
             };
 
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            throw new HttpRequestException("network failed");
         }
     }
 }
