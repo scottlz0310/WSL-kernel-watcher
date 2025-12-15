@@ -101,7 +101,7 @@ internal sealed partial class MainWindow : Window
         }
         else
         {
-            _ = CheckForUpdatesAsync();
+            _ = CheckForUpdatesAsync(showNoUpdateDialog: false);
         }
     }
 
@@ -183,6 +183,7 @@ internal sealed partial class MainWindow : Window
         _contextMenu = new TrayContextMenu();
         _contextMenu.AddMenuItem("開く(&O)", () => DispatcherQueue.TryEnqueue(ShowWindowFromTray));
         _contextMenu.AddMenuItem("今すぐチェック(&C)", () => DispatcherQueue.TryEnqueue(async () => await _service.CheckOnceAsync()));
+        _contextMenu.AddMenuItem("アップデート確認(&U)", () => DispatcherQueue.TryEnqueue(async () => await CheckForUpdatesAsync(showNoUpdateDialog: true)));
         _contextMenu.AddSeparator();
         _contextMenu.AddMenuItem("終了(&X)", () => DispatcherQueue.TryEnqueue(ExitApplication));
         _contextMenu.Show(_hwnd);
@@ -258,7 +259,7 @@ internal sealed partial class MainWindow : Window
         HideWindowToTray();
     }
 
-    private async Task CheckForUpdatesAsync()
+    private async Task CheckForUpdatesAsync(bool showNoUpdateDialog)
     {
         try
         {
@@ -266,6 +267,23 @@ internal sealed partial class MainWindow : Window
             AutoUpdateResult result = await _autoUpdateService.CheckForUpdatesAsync(cts.Token).ConfigureAwait(false);
             if (!result.HasUpdate || string.IsNullOrWhiteSpace(result.ReleaseUrl))
             {
+                if (showNoUpdateDialog)
+                {
+                    _ = DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        var dialog = new ContentDialog
+                        {
+                            Title = "最新バージョンを利用中です",
+                            Content = "新しいバージョンは見つかりませんでした。",
+                            CloseButtonText = "閉じる",
+                            DefaultButton = ContentDialogButton.Close,
+                            XamlRoot = Content.XamlRoot,
+                        };
+
+                        await dialog.ShowAsync(ContentDialogPlacement.Popup);
+                    });
+                }
+
                 return;
             }
 
