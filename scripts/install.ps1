@@ -47,6 +47,12 @@ Write-Host ""
 
 # Function to find the executable
 function Find-Executable {
+    # Prefer executables shipped alongside this script (installer bundle)
+    $localExe = Join-Path $PSScriptRoot "WSLKernelWatcher.WinUI3.exe"
+    if (Test-Path $localExe) {
+        return (Resolve-Path $localExe).Path
+    }
+
     # Dynamic search for build output paths
     $buildPaths = @(
         @{

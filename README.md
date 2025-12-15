@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/WSL-kernel-watcher)
 
-WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカーネルバージョンを監視し、更新があった場合に通知を行う常駐型軽量アプリケーションです（安定版: 3.0.0）。
+WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカーネルバージョンを監視し、更新があった場合に通知を行う常駐型軽量アプリケーションです（安定版: 3.1.0）。
 
 ## 機能
 
@@ -43,7 +43,11 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 
 ### インストール（自動起動設定）
 
-ビルド後、タスクスケジューラに登録して自動起動できます:
+#### 配布物
+- リリースページ（例: https://github.com/scottlz0310/WSL-kernel-watcher/releases/latest ）に x64 向けのセットアップ Zip（`WSLKernelWatcher-Setup-<version>-x64.zip`）を公開しています。展開すると実行ファイルと `install.ps1` / `uninstall.ps1` / `create-shortcuts.ps1` が同梱されています（3.1.0 でインストーラーを追加）。
+
+#### タスクスケジューラ登録
+PowerShell でインストールスクリプトを実行して自動起動を設定できます:
 
 ```powershell
 # 標準インストール（ログイン時にウィンドウ表示）
@@ -57,6 +61,17 @@ $msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild 
 ```
 
 インストールすると、次回のログインから自動的に起動します。
+
+#### ショートカット作成（必要に応じて）
+展開したセットアップ Zip に含まれる `create-shortcuts.ps1` を使って、スタートメニューやデスクトップにショートカットを作成できます:
+
+```powershell
+# スタートメニューにショートカットを作成
+.\scripts\create-shortcuts.ps1
+
+# トレイ起動用ショートカットをスタートメニューとデスクトップに作成
+.\scripts\create-shortcuts.ps1 -Tray -Desktop
+```
 
 ### アンインストール
 

@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Graphics;
@@ -22,6 +23,7 @@ internal sealed partial class MainWindow : Window
     private readonly KernelWatcherService _service;
     private readonly LoggingService _loggingService;
     private readonly SettingsService _settingsService;
+    private readonly AutoUpdateService _autoUpdateService;
     private readonly ObservableCollection<string> _logEntries = new();
     private readonly TrayIconService _trayIconService;
     private TrayContextMenu? _contextMenu;
@@ -57,7 +59,7 @@ internal sealed partial class MainWindow : Window
     private const uint _imageIcon = 1;
     private const uint _lrLoadFromFile = 0x00000010;
 
-    internal MainWindow(KernelWatcherService service, LoggingService loggingService, SettingsService settingsService, bool showWindow = true)
+    internal MainWindow(KernelWatcherService service, LoggingService loggingService, SettingsService settingsService, AutoUpdateService autoUpdateService, bool showWindow = true)
     {
         InitializeComponent();
 
@@ -74,6 +76,7 @@ internal sealed partial class MainWindow : Window
         _service = service;
         _loggingService = loggingService;
         _settingsService = settingsService;
+        _autoUpdateService = autoUpdateService;
         _service.StatusChanged += OnStatusChanged;
         _loggingService.LogAppended += OnLogAppended;
         LogList.ItemsSource = _logEntries;
@@ -95,6 +98,10 @@ internal sealed partial class MainWindow : Window
         if (!showWindow)
         {
             ShowWindow(_hwnd, _swHide);
+        }
+        else
+        {
+            _ = CheckForUpdatesAsync(showNoUpdateDialog: false);
         }
     }
 
@@ -175,7 +182,8 @@ internal sealed partial class MainWindow : Window
         _contextMenu?.Dispose();
         _contextMenu = new TrayContextMenu();
         _contextMenu.AddMenuItem("開く(&O)", () => DispatcherQueue.TryEnqueue(ShowWindowFromTray));
-        _contextMenu.AddMenuItem("今すぐチェック(&C)", () => DispatcherQueue.TryEnqueue(async () => await _service.CheckOnceAsync()));
+        _contextMenu.AddMenuItem("WSLカーネルを今すぐチェック(&C)", () => DispatcherQueue.TryEnqueue(async () => await _service.CheckOnceAsync()));
+        _contextMenu.AddMenuItem("アプリの更新を確認(&U)", () => DispatcherQueue.TryEnqueue(async () => await CheckForUpdatesAsync(showNoUpdateDialog: true)));
         _contextMenu.AddSeparator();
         _contextMenu.AddMenuItem("終了(&X)", () => DispatcherQueue.TryEnqueue(ExitApplication));
         _contextMenu.Show(_hwnd);
@@ -249,5 +257,79 @@ internal sealed partial class MainWindow : Window
 
         e.Cancel = true;
         HideWindowToTray();
+    }
+
+    private async Task CheckForUpdatesAsync(bool showNoUpdateDialog)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            AutoUpdateResult result = await _autoUpdateService.CheckForUpdatesAsync(cts.Token).ConfigureAwait(false);
+            if (!result.HasUpdate || string.IsNullOrWhiteSpace(result.ReleaseUrl))
+            {
+                if (showNoUpdateDialog)
+                {
+                    _ = DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        var dialog = new ContentDialog
+                        {
+                            Title = "最新バージョンを利用中です",
+                            Content = "新しいバージョンは見つかりませんでした。",
+                            CloseButtonText = "閉じる",
+                            DefaultButton = ContentDialogButton.Close,
+                            XamlRoot = Content.XamlRoot,
+                        };
+
+                        await dialog.ShowAsync(ContentDialogPlacement.Popup);
+                    });
+                }
+
+                return;
+            }
+
+            _ = DispatcherQueue.TryEnqueue(async () =>
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "新しいバージョンがあります",
+                    Content = $"最新バージョン {result.LatestVersion} がリリースされています。ダウンロードページを開きますか？",
+                    PrimaryButtonText = "ダウンロード",
+                    CloseButtonText = "後で",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = Content.XamlRoot,
+                };
+
+                ContentDialogResult dialogResult = await dialog.ShowAsync(ContentDialogPlacement.Popup);
+                if (dialogResult == ContentDialogResult.Primary)
+                {
+                    TryOpenReleasePage(result.ReleaseUrl);
+                }
+            });
+        }
+        catch
+        {
+            // サイレントに失敗させる
+        }
+    }
+
+    private void TryOpenReleasePage(string releaseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(releaseUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = releaseUrl,
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // ignore
+        }
     }
 }

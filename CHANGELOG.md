@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2025-12-15
+
+### Added
+- GitHub Actions リリース成果物に WinUI 3 アプリのセットアップ Zip（install/uninstall/create-shortcuts 同梱）を追加
+
+### Fixed
+- `dotnet publish` 生成物に PRI が含まれず起動できない問題を解消し、配布物でも起動を確認
+
+### Changed
+- アプリバージョンを 3.1.0 に更新し、配布物のバージョン表記を統一
+
 ## [3.0.0] - 2025-12-15
 
 ### Changed
@@ -170,6 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - リトライ機能
 
 [3.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.1.1...v3.0.0
+[3.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v3.0.0...v3.1.0
 [2.1.1]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/scottlz0310/WSL-kernel-watcher/compare/v1.2.0...v2.0.0

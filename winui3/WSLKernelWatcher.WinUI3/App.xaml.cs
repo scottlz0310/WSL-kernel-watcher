@@ -18,6 +18,7 @@ public partial class App : Application
     private readonly LoggingService _loggingService = new();
     private readonly SettingsService _settingsService = new();
     private readonly KernelWatcherService _watcherService;
+    private readonly AutoUpdateService _autoUpdateService;
 
     public App()
     {
@@ -29,6 +30,7 @@ public partial class App : Application
         // Create watcher service with settings
         var interval = TimeSpan.FromHours(_settingsService.Settings.CheckIntervalHours);
         _watcherService = new KernelWatcherService(_notificationService, _loggingService, interval);
+        _autoUpdateService = new AutoUpdateService(_loggingService);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -37,7 +39,7 @@ public partial class App : Application
         string[] commandLineArgs = Environment.GetCommandLineArgs();
         bool showWindow = !commandLineArgs.Contains("--tray") && !commandLineArgs.Contains("-t");
 
-        _window = new MainWindow(_watcherService, _loggingService, _settingsService, showWindow);
+        _window = new MainWindow(_watcherService, _loggingService, _settingsService, _autoUpdateService, showWindow);
         _window.Closed += OnWindowClosed;
 
         // Activate window if it should be shown
@@ -52,6 +54,7 @@ public partial class App : Application
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
         _watcherService.DisposeAsync().AsTask().ConfigureAwait(false);
+        _autoUpdateService.Dispose();
     }
 
     private void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args)

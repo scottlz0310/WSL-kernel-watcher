@@ -74,12 +74,32 @@ jobs:
         echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_OUTPUT
       id: archive
 
+    - name: Create installer bundle
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $platform = "${{ matrix.platform }}"
+        $bundleDir = Join-Path -Path "." -ChildPath "installer/$platform"
+        New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
+        Copy-Item -Path "./publish/$platform/*" -Destination $bundleDir -Recurse -Force
+        Copy-Item -Path "scripts/install.ps1","scripts/uninstall.ps1","scripts/create-shortcuts.ps1" -Destination $bundleDir -Force
+        $installerArchive = "WSLKernelWatcher-Setup-$version-$platform.zip"
+        Compress-Archive -Path "$bundleDir/*" -DestinationPath "./$installerArchive" -Force
+        echo "INSTALLER_ARCHIVE=$installerArchive" >> $env:GITHUB_OUTPUT
+      id: installer
+
     - name: Generate checksums
       shell: pwsh
       run: |
-        $archiveName = "${{ steps.archive.outputs.ARCHIVE_NAME }}"
-        $hash = Get-FileHash -Path ./$archiveName -Algorithm SHA256
-        "$($hash.Hash)  $archiveName" | Out-File -FilePath ./checksums-${{ matrix.platform }}.txt -Encoding ASCII
+        $archives = @(
+          "${{ steps.archive.outputs.ARCHIVE_NAME }}",
+          "${{ steps.installer.outputs.INSTALLER_ARCHIVE }}"
+        )
+        $lines = foreach ($name in $archives) {
+          $hash = Get-FileHash -Path "./$name" -Algorithm SHA256
+          "$($hash.Hash)  $name"
+        }
+        $lines | Out-File -FilePath "./checksums-${{ matrix.platform }}.txt" -Encoding ASCII
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -87,6 +107,7 @@ jobs:
       with:
         files: |
           ${{ steps.archive.outputs.ARCHIVE_NAME }}
+          ${{ steps.installer.outputs.INSTALLER_ARCHIVE }}
           checksums-${{ matrix.platform }}.txt
         draft: false
         prerelease: false
@@ -100,5 +121,6 @@ jobs:
         name: WSLKernelWatcher-${{ matrix.platform }}
         path: |
           ${{ steps.archive.outputs.ARCHIVE_NAME }}
+          ${{ steps.installer.outputs.INSTALLER_ARCHIVE }}
           checksums-${{ matrix.platform }}.txt
         retention-days: 30
