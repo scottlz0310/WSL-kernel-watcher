@@ -7,9 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - WinUI 3 アプリを .NET 10 + Windows App SDK 1.8 に更新し、サポート OS を Windows 11 24H2 以降に整理
 - ビルド/テスト/ドキュメントを 3.0.0 向けに整備し、手動起動パスを最新版に更新
+- Python 実装を廃止し、WinUI 3 ベースのアプリに一本化
 
 ### Technical
 - CI パイプラインを .NET 10 / Windows App SDK 1.8 に追随
+- フォールバックとして PowerShell スクリプト版を引き続き同梱
 
 ## [2.1.1] - 2025-01-20
 
