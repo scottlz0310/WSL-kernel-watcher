@@ -18,6 +18,7 @@ namespace WSLKernelWatcher.WinUI3;
 [ExcludeFromCodeCoverage]
 internal sealed partial class MainWindow : Window
 {
+    private bool _isExitRequested;
     private readonly KernelWatcherService _service;
     private readonly LoggingService _loggingService;
     private readonly SettingsService _settingsService;
@@ -65,6 +66,7 @@ internal sealed partial class MainWindow : Window
         Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd);
         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
         appWindow.Resize(new SizeInt32(520, 360));
+        appWindow.Closing += OnAppWindowClosing;
 
         // Set window icon
         SetWindowIcon();
@@ -181,6 +183,7 @@ internal sealed partial class MainWindow : Window
 
     private void ExitApplication()
     {
+        _isExitRequested = true;
         _trayIconService?.Dispose();
         _contextMenu?.Dispose();
         Close();
@@ -235,5 +238,16 @@ internal sealed partial class MainWindow : Window
         {
             // ignore
         }
+    }
+
+    private void OnAppWindowClosing(object? sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
+    {
+        if (_isExitRequested)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        HideWindowToTray();
     }
 }

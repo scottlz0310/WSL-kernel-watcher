@@ -126,13 +126,14 @@ if ($existingTask) {
 }
 
 # Prepare arguments
-$arguments = ""
-if ($StartMinimized) {
-    $arguments = "--tray"
-}
+$arguments = if ($StartMinimized) { "--tray" } else { $null }
 
-# Create task action
-$action = New-ScheduledTaskAction -Execute $ExePath -Argument $arguments
+# Create task action (引数が空の場合は -Argument を指定しない)
+if ([string]::IsNullOrWhiteSpace($arguments)) {
+    $action = New-ScheduledTaskAction -Execute $ExePath
+} else {
+    $action = New-ScheduledTaskAction -Execute $ExePath -Argument $arguments
+}
 
 # Create task trigger (at logon)
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
