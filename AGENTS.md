@@ -17,9 +17,9 @@ WSL Kernel Watcher は `winui3/WSLKernelWatcher.WinUI3` 配下に含まれます
 ```powershell
 pwsh -File .\scripts\setup-dev.ps1
 ```
-WinUI 3 アプリは Visual Studio の Developer PowerShell から MSBuild でビルドしてください（`dotnet build` は使用しない）:
+WinUI 3 アプリは .NET SDK を使用してビルドしてください:
 ```powershell
-msbuild winui3\WSLKernelWatcher.WinUI3\WSLKernelWatcher.WinUI3.csproj /p:Configuration=Release /p:Platform=x64
+dotnet build winui3\WSLKernelWatcher.WinUI3.sln -c Release -p:Platform=x64
 ```
 テストは xUnit で `dotnet test winui3/WSLKernelWatcher.WinUI3.sln` を実行します。CI と同じフォーマットルールを適用するためにコミット前に `dotnet format winui3/WSLKernelWatcher.WinUI3.sln` を実行してください。ビルド済みバイナリをタスクスケジューラーに登録するには:
 ```powershell
