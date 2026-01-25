@@ -37,7 +37,7 @@ WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカ�
 dotnet build winui3\WSLKernelWatcher.WinUI3.sln -c Release -p:Platform=x64
 ```
 
-> **注意:** .NET SDK 10.0.102以降（global.jsonに一致するバージョン）が必要です。
+> **注意:** .NET SDK 10.0.102（global.jsonで指定）が必要です。
 
 ### インストール（自動起動設定）
 
