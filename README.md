@@ -31,15 +31,13 @@ WSL Kernel Watcherは、Windows上でWSL（Windows Subsystem for Linux）のカ�
 2. 構成を `Release` / `x64` に設定
 3. ビルド → ソリューションのビルド (`Ctrl+Shift+B`)
 
-#### コマンドラインから（VS Developer Command Prompt）
+#### コマンドラインから
 ```powershell
-# VS2026のMSBuildを使用
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$msbuild = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
-& $msbuild winui3\WSLKernelWatcher.WinUI3\WSLKernelWatcher.WinUI3.csproj /p:Configuration=Release /p:Platform=x64
+# .NET SDK（global.jsonに一致するバージョン）を使用
+dotnet build winui3\WSLKernelWatcher.WinUI3.sln -c Release -p:Platform=x64
 ```
 
-> **注意:** `dotnet build` は WinUI3 に必要な MSBuild タスクが不足しているため使用できません。
+> **注意:** .NET SDK 10.0.102（global.jsonで指定）が必要です。
 
 ### インストール（自動起動設定）
 
