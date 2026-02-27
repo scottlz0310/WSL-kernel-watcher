@@ -30,7 +30,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
-    <PackageReference Include="CommunityToolkit.WinUI.Notifications" />
     <PackageReference Include="System.Drawing.Common" />
 
     <!-- Code Analysis -->
