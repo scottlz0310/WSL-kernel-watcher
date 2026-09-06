@@ -10,6 +10,7 @@ using System.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using SquirrelNotifier.WinUI3.Helpers;
 using SquirrelNotifier.WinUI3.Models;
 using SquirrelNotifier.WinUI3.Services;
@@ -44,6 +45,7 @@ internal sealed partial class MainWindow : Window
     private readonly AutoPauseGate _autoPauseGate = new();
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
+    private ScrollViewer? _logListScrollViewer;
     private bool _isCheckingForUpdates;
     private bool _hasShownErrorBalloon;
     private bool _isAutoStartToggling;
@@ -416,13 +418,72 @@ internal sealed partial class MainWindow : Window
     {
         _ = DispatcherQueue.TryEnqueue(() =>
         {
+            // 追加前のスクロール位置で判定する。追加後は scrollableHeight が伸びて
+            // 「末尾にいた」状態が末尾付近でなくなるため（#232）
+            bool shouldFollow = ShouldFollowLogTail();
+
             _logEntries.Add(line);
             const int maxEntries = 200;
             if (_logEntries.Count > maxEntries)
             {
                 _logEntries.RemoveAt(0);
             }
+
+            if (shouldFollow && _logEntries.Count > 0)
+            {
+                LogList.ScrollIntoView(_logEntries[^1]);
+            }
         });
+    }
+
+    /// <summary>
+    /// Recent activity が新しい行へ自動追従してよいかを判定する。ユーザーが過去ログを読むため
+    /// 上へスクロールしている間は追従せず、末尾付近（End キーやスクロールで戻る）に居るときだけ
+    /// 追従する（#232）.
+    /// </summary>
+    private bool ShouldFollowLogTail()
+    {
+        ScrollViewer? scrollViewer = ResolveLogListScrollViewer();
+        if (scrollViewer is null)
+        {
+            // ScrollViewer をまだ辿れない（初回レイアウト前）。この時点では全行が
+            // 表示に収まっているため追従して問題ない
+            return true;
+        }
+
+        return LogFollowPolicy.ShouldFollow(scrollViewer.VerticalOffset, scrollViewer.ScrollableHeight);
+    }
+
+    private ScrollViewer? ResolveLogListScrollViewer()
+    {
+        if (_logListScrollViewer is not null)
+        {
+            return _logListScrollViewer;
+        }
+
+        _logListScrollViewer = FindDescendantScrollViewer(LogList);
+        return _logListScrollViewer;
+    }
+
+    private static ScrollViewer? FindDescendantScrollViewer(DependencyObject root)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (int index = 0; index < childCount; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is ScrollViewer scrollViewer)
+            {
+                return scrollViewer;
+            }
+
+            ScrollViewer? found = FindDescendantScrollViewer(child);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private void OnOpenLogFolder(object sender, RoutedEventArgs e)
