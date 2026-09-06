@@ -993,6 +993,143 @@ public class McpSubscriptionServiceTests : IDisposable
         service.LastError.Should().Contain("persistent error");
     }
 
+    [Theory]
+    [InlineData("connect ECONNREFUSED 127.0.0.1:3000")]
+    [InlineData("fetch failed")]
+    public async Task Start_WithGatewayNotReady_ShouldWaitInsteadOfFailing(string stderr)
+    {
+        // Arrange: PC 起動直後に mcp-gateway コンテナがまだ Ready でない状況（#236）。
+        // maxRetries: 0 でも接続拒否は確定エラーにせず待機に入ること
+        var preflightProcess = CreateMockProcess(0, "help", string.Empty);
+        var testCts = new CancellationTokenSource();
+        var logLines = new List<string>();
+        void OnLogAppended(object? sender, string line)
+        {
+            lock (logLines)
+            {
+                logLines.Add(line);
+            }
+
+            // 待機に入ったことを確認できれば十分。5 秒の待機に入った時点で loop を畳む
+            if (line.Contains("Waiting for mcp-gateway to become ready", StringComparison.Ordinal))
+            {
+                testCts.Cancel();
+            }
+        }
+
+        _loggingService.LogAppended += OnLogAppended;
+
+        int subscriptionCallCount = 0;
+        var mockRunner = new Mock<IProcessRunner>();
+        mockRunner.Setup(r => r.Start(It.IsAny<ProcessStartInfo>()))
+            .Returns<ProcessStartInfo>(psi =>
+            {
+                if (psi.ArgumentList.Contains("--help"))
+                {
+                    return preflightProcess;
+                }
+
+                subscriptionCallCount++;
+                if (subscriptionCallCount >= 3)
+                {
+                    // 待機ログが出ないまま回り続けた場合にテストが止まらなくなるのを防ぐ保険
+                    testCts.Cancel();
+                }
+
+                return CreateMockProcess(1, string.Empty, stderr);
+            });
+
+        var service = new McpSubscriptionService(_settingsService, _notificationService, _loggingService, mockRunner.Object, maxRetries: 0);
+        var runMethod = typeof(McpSubscriptionService).GetMethod("RunSubscriptionLoopAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        // Act
+        try
+        {
+            var task = (Task)runMethod!.Invoke(service, new object[] { testCts.Token })!;
+            await task;
+        }
+        finally
+        {
+            _loggingService.LogAppended -= OnLogAppended;
+        }
+
+        // Assert
+        List<string> captured;
+        lock (logLines)
+        {
+            captured = new List<string>(logLines);
+        }
+
+        subscriptionCallCount.Should().Be(1);
+        captured.Should().Contain(line => line.Contains("Waiting for mcp-gateway to become ready", StringComparison.Ordinal));
+        captured.Should().NotContain(line => line.Contains("max retries exceeded", StringComparison.Ordinal));
+        service.State.Should().NotBe(SubscriptionState.Error);
+        service.LastError.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Start_WithGatewayNotReady_ShouldTransitionToErrorAfterWaitBudget()
+    {
+        // Arrange: 待機予算を使い切った場合は確定エラーにする（#236）
+        var preflightProcess = CreateMockProcess(0, "help", string.Empty);
+        var logLines = new List<string>();
+        void OnLogAppended(object? sender, string line)
+        {
+            lock (logLines)
+            {
+                logLines.Add(line);
+            }
+        }
+
+        _loggingService.LogAppended += OnLogAppended;
+
+        int subscriptionCallCount = 0;
+        var mockRunner = new Mock<IProcessRunner>();
+        mockRunner.Setup(r => r.Start(It.IsAny<ProcessStartInfo>()))
+            .Returns<ProcessStartInfo>(psi =>
+            {
+                if (psi.ArgumentList.Contains("--help"))
+                {
+                    return preflightProcess;
+                }
+
+                subscriptionCallCount++;
+                return CreateMockProcess(1, string.Empty, "connect ECONNREFUSED 127.0.0.1:3000");
+            });
+
+        var service = new McpSubscriptionService(
+            _settingsService,
+            _notificationService,
+            _loggingService,
+            mockRunner.Object,
+            maxRetries: 0,
+            dependencyWaitBudgetMs: 0);
+        var runMethod = typeof(McpSubscriptionService).GetMethod("RunSubscriptionLoopAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        // Act
+        try
+        {
+            var task = (Task)runMethod!.Invoke(service, new object[] { CancellationToken.None })!;
+            await task;
+        }
+        finally
+        {
+            _loggingService.LogAppended -= OnLogAppended;
+        }
+
+        // Assert
+        List<string> captured;
+        lock (logLines)
+        {
+            captured = new List<string>(logLines);
+        }
+
+        subscriptionCallCount.Should().Be(1);
+        service.State.Should().Be(SubscriptionState.Error);
+        service.LastError.Should().Contain("mcp-gateway への接続に失敗しました");
+        captured.Should().Contain(line => line.Contains("dependency wait budget exceeded", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task StopAsync_ShouldCancelBackoffDelayPromptly()
     {
@@ -1872,6 +2009,50 @@ public class McpSubscriptionServiceTests : IDisposable
         friendlyResult.Should().Contain(expectedFragment);
         friendlyResult.Should().NotContain("予期しないエラー");
         tagResult.Should().NotBe("[AUTH_REQUIRED]");
+    }
+
+    // mcp-resource-subscriber の networkErrorClassification が返す 3 コード（#236 レビュー指摘）。
+    // undici はいずれも "fetch failed" として包むため、legacy 文字列判定へ落とすと TLS 証明書
+    // 不信頼・DNS 解決失敗まで [CONN_REFUSED] になり、gateway 起動待ち（5 分）に入って
+    // 設定エラーの確定が遅れる。待機してよいのは CONNECTION_REFUSED だけ。
+    [Theory]
+    [InlineData("CONNECTION_REFUSED", "接続を拒否されました", "[CONN_REFUSED]", true)]
+    [InlineData("TLS_CERT_UNTRUSTED", "NODE_EXTRA_CA_CERTS", "[TLS_CERT_UNTRUSTED]", false)]
+    [InlineData("DNS_LOOKUP_FAILED", "ホスト名を解決できませんでした", "[DNS_LOOKUP_FAILED]", false)]
+    public void ErrorMessageMapping_WithNetworkErrorCode_ShouldOnlyTreatConnectionRefusedAsDependencyWait(
+        string structuredErrorCode,
+        string expectedFragment,
+        string expectedTag,
+        bool expectedWaitsForDependency)
+    {
+        // Arrange: undici の "fetch failed" が diagnosticText に含まれる実際の形
+        string rawError = $"Subscriber process exited with non-zero code 3. ErrorCode: {structuredErrorCode}.";
+        string diagnosticText = "subscribe-probe failed: fetch failed";
+
+        // Act
+        var (friendlyResult, tagResult) = McpSubscriptionService.GetErrorInfo(
+            rawError, structuredErrorCode, diagnosticText);
+
+        // Assert
+        friendlyResult.Should().Contain(expectedFragment);
+        tagResult.Should().Be(expectedTag);
+
+        // 待機経路に入るのは CONNECTION_REFUSED のみであること
+        SubscriptionRetryPolicy.Decide(tagResult, 1, 0, maxRetries: 5)
+            .IsWaitingForDependency.Should().Be(expectedWaitsForDependency);
+    }
+
+    [Theory]
+    [InlineData("TLS_CERT_UNTRUSTED")]
+    [InlineData("DNS_LOOKUP_FAILED")]
+    public void ErrorMessageMapping_WithNonRetriableNetworkErrorCode_ShouldGiveUpAfterMaxRetries(string structuredErrorCode)
+    {
+        // 待っても解決しない設定エラーは、経過時間に関係なく回数上限で確定させる
+        var (_, tagResult) = McpSubscriptionService.GetErrorInfo(
+            "Subscriber process exited with non-zero code 3.", structuredErrorCode, "subscribe-probe failed: fetch failed");
+
+        SubscriptionRetryPolicy.Decide(tagResult, 6, consecutiveFailureElapsedMs: 0, maxRetries: 5)
+            .ShouldRetry.Should().BeFalse();
     }
 
     [Theory]

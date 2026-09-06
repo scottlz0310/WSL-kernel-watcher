@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - トレイポップアップ用 Window に owner window が設定されるようになった（#229）。`TaskbarIcon` は自身の `Loaded` ハンドラでトレイアイコンを生成し、そこで初めて `TrayIcon.WindowHandle` が確定する。XAML ロード時点ではまだ 0 のため `CreateTrayPopupWindow` の `SetOwnerWindow` が黙ってスキップされていた。代入を `TrayIcon.Loaded` 後へ移して解消した
 
 ### Changed
+- mcp-gateway が未 Ready のときに購読を待機してから確定エラーにするようになった（#236）。PC 起動時（ログイン時）の自動起動では、Docker / WSL2 / mcp-gateway コンテナの初期化が終わる前に接続を試みるため接続拒否になる。従来は指数バックオフ 5 回（合計約 31 秒）で打ち切って `Error` に遷移し、購読が止まったまま復帰しなかった。新しい `SubscriptionRetryPolicy` は失敗をクラス分けし、接続拒否（`fetch failed` / `ECONNREFUSED`）だけは 5 秒間隔・上限 5 分で待機する。待機中は `Error` に遷移せず、状態表示に「mcp-gateway の起動を待機中... (経過 s / 上限 s)」を出す。待っても解決しないエラー（認証・404 等）は従来どおり指数バックオフで早期に確定させるため、設定不備の検知が遅くなることはない。待機は起動直後に限定せず接続拒否全般に適用するため、Docker Desktop の再起動やコンテナ再作成中も自動復帰する。併せて、mcp-resource-subscriber がネットワーク失敗時に返す `CONNECTION_REFUSED` / `TLS_CERT_UNTRUSTED` / `DNS_LOOKUP_FAILED` を構造化 ErrorCode として明示分類した。undici はいずれも `fetch failed` として包むため、legacy 文字列判定に落とすと TLS 証明書不信頼（`NODE_EXTRA_CA_CERTS` 未設定など）や DNS 解決失敗まで接続拒否と同じ扱いになり、5 分待たされたうえに原因を示さないメッセージが出ていた。待機対象は `CONNECTION_REFUSED` のみとし、TLS・DNS はそれぞれ対処方法を示すメッセージで早期に確定させる
 - `H.NotifyIcon.WinUI` の prerelease 採用理由を `Directory.Packages.props` の実態へ合わせた（#229）。コメントは「beta を明示的に採用する」と書かれたまま、実際の指定は Renovate が更新した `2.5.0-dev.2` になっていた。2.5.0 の正式版は未リリースで prerelease チャンネルの最新が dev.2 のため、beta.1 へ戻さず dev.2 を採用する方針を明記した
 
 ## [0.7.0] - 2026-08-26

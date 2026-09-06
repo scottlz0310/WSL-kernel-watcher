@@ -35,12 +35,21 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     // mcp-resource-subscriber v0.6.0（MCP 2026-07-28 移行）で新設された ErrorCode。
     // いずれも原因が確定しているため、汎用の「予期しないエラー」ではなく次の行動が
     // 分かるメッセージを返す。ホワイトリストより先に判定する。
-    private static readonly Dictionary<string, string> _subscriptionErrorCodeMessages = new(StringComparer.OrdinalIgnoreCase)
+    //
+    // ネットワーク系の 3 コード（networkErrorClassification.ts 由来）はエラータグを
+    // 個別に持つ。undici はこれらをすべて `fetch failed` として包むため、legacy 文字列
+    // 判定に落とすと TLS 証明書不信頼や DNS 解決失敗まで [CONN_REFUSED] になり、
+    // SubscriptionRetryPolicy の gateway 起動待ち（5 分）に入って設定エラーの確定と
+    // 案内が遅れる。待機してよいのは CONNECTION_REFUSED だけ.
+    private static readonly Dictionary<string, (string Message, string Tag)> _subscriptionErrorCodeMessages = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["SUBSCRIPTION_DISCONNECTED"] = "購読ストリームがサーバー側から切断されました。mcp-gateway と thread-owl が稼働しているか確認してください。",
-        ["SUBSCRIPTION_CLOSED"] = "購読ストリームが閉じられました。",
-        ["SUBSCRIPTION_NOT_HONORED"] = "サーバーが Resource URI の購読を受け付けませんでした。Resource URI の設定が正しいか確認してください。",
-        ["PROTOCOL_UNSUPPORTED"] = "接続先が MCP プロトコル 2026-07-28 に未対応です。mcp-gateway と接続先サーバーを 2026-07-28 対応版へ更新してください。",
+        ["SUBSCRIPTION_DISCONNECTED"] = ("購読ストリームがサーバー側から切断されました。mcp-gateway と thread-owl が稼働しているか確認してください。", "[GENERAL_ERROR]"),
+        ["SUBSCRIPTION_CLOSED"] = ("購読ストリームが閉じられました。", "[GENERAL_ERROR]"),
+        ["SUBSCRIPTION_NOT_HONORED"] = ("サーバーが Resource URI の購読を受け付けませんでした。Resource URI の設定が正しいか確認してください。", "[GENERAL_ERROR]"),
+        ["PROTOCOL_UNSUPPORTED"] = ("接続先が MCP プロトコル 2026-07-28 に未対応です。mcp-gateway と接続先サーバーを 2026-07-28 対応版へ更新してください。", "[GENERAL_ERROR]"),
+        ["CONNECTION_REFUSED"] = ("mcp-gateway への接続を拒否されました。mcp-gateway コンテナが起動しているか、または Gateway URL の設定が正しいか確認してください。", SubscriptionRetryPolicy.DependencyNotReadyErrorTag),
+        ["TLS_CERT_UNTRUSTED"] = ("mcp-gateway の TLS 証明書が信頼されていません。ローカル CA（mkcert 等）を使用している場合は、CA ルート証明書のパスを NODE_EXTRA_CA_CERTS に設定してください。", "[TLS_CERT_UNTRUSTED]"),
+        ["DNS_LOOKUP_FAILED"] = ("Gateway URL のホスト名を解決できませんでした。ホスト名の誤りがないか、DNS が疎通しているかを確認してください。", "[DNS_LOOKUP_FAILED]"),
     };
 
     private readonly SettingsService _settingsService;
@@ -50,6 +59,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     private readonly ICacheService? _cacheService;
     private readonly SecretMasker _secretMasker;
     private readonly int _maxRetries;
+    private readonly int _dependencyWaitBudgetMs;
     private readonly int _startTimeoutMs;
     private readonly CancellationTokenSource _cts = new();
     private readonly HashSet<string> _seenEventIds = new();
@@ -107,7 +117,8 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
         int maxRetries = 5,
         ICacheService? cacheService = null,
         SecretMasker? secretMasker = null,
-        int startTimeoutMs = _defaultStartTimeoutMs)
+        int startTimeoutMs = _defaultStartTimeoutMs,
+        int dependencyWaitBudgetMs = SubscriptionRetryPolicy.DefaultDependencyWaitBudgetMs)
     {
         _settingsService = settingsService;
         _notificationService = notificationService;
@@ -117,6 +128,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
         _cacheService = cacheService;
         _secretMasker = secretMasker ?? SecretMasker.CreateDefault();
         _startTimeoutMs = startTimeoutMs;
+        _dependencyWaitBudgetMs = dependencyWaitBudgetMs;
     }
 
     public void Start()
@@ -567,7 +579,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     private async Task RunSingleUriLoopAsync(string resourceUri, CancellationToken token)
     {
         int retryCount = 0;
-        int retryDelayMs = 1000;
+        long? firstFailureTick = null;
 
         while (!token.IsCancellationRequested)
         {
@@ -706,7 +718,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                 }
 
                 retryCount = 0;
-                retryDelayMs = 1000;
+                firstFailureTick = null;
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -716,11 +728,20 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
             catch (Exception ex)
             {
                 retryCount++;
+                firstFailureTick ??= Environment.TickCount64;
+                long failureElapsedMs = Environment.TickCount64 - firstFailureTick.Value;
                 string? structuredErrorCode = (ex as SubscriberProcessException)?.ErrorCode;
                 string? diagnosticText = (ex as SubscriberProcessException)?.DiagnosticText;
                 (string friendlyMessage, string tag) = GetErrorInfo(ex.Message, structuredErrorCode, diagnosticText);
 
-                if (retryCount > _maxRetries)
+                SubscriptionRetryDecision decision = SubscriptionRetryPolicy.Decide(
+                    tag,
+                    retryCount,
+                    failureElapsedMs,
+                    _maxRetries,
+                    _dependencyWaitBudgetMs);
+
+                if (!decision.ShouldRetry)
                 {
                     // 停止処理中は Error を書き戻さない（LastError / 状態表示も更新しない）。
                     // 障害の記録はログに残す
@@ -729,23 +750,34 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                         ReportStatus($"Error: {friendlyMessage}");
                     }
 
-                    await LogAsync($"[{resourceUri}] Subscription loop error (max retries exceeded) {tag}: {ex.Message}").ConfigureAwait(false);
+                    string giveUpReason = decision.IsWaitingForDependency
+                        ? $"dependency wait budget exceeded after {failureElapsedMs / 1000}s"
+                        : "max retries exceeded";
+                    await LogAsync($"[{resourceUri}] Subscription loop error ({giveUpReason}) {tag}: {ex.Message}").ConfigureAwait(false);
                     break;
                 }
 
-                await LogAsync($"[{resourceUri}] Subscription loop error (retry {retryCount}/{_maxRetries}) {tag}: {ex.Message}").ConfigureAwait(false);
-                ReportStatus($"Retrying ({retryCount}/{_maxRetries})...");
+                if (decision.IsWaitingForDependency)
+                {
+                    // 接続拒否は依存サービス（Docker / WSL2 / mcp-gateway コンテナ）が
+                    // まだ Ready でないだけのことが多いため、確定エラーにせず待つ（#236）
+                    await LogAsync($"[{resourceUri}] Waiting for mcp-gateway to become ready ({failureElapsedMs / 1000}s / {_dependencyWaitBudgetMs / 1000}s) {tag}: {ex.Message}").ConfigureAwait(false);
+                    ReportStatus($"mcp-gateway の起動を待機中... ({failureElapsedMs / 1000}s / {_dependencyWaitBudgetMs / 1000}s)");
+                }
+                else
+                {
+                    await LogAsync($"[{resourceUri}] Subscription loop error (retry {retryCount}/{_maxRetries}) {tag}: {ex.Message}").ConfigureAwait(false);
+                    ReportStatus($"Retrying ({retryCount}/{_maxRetries})...");
+                }
 
                 try
                 {
-                    await Task.Delay(retryDelayMs, token).ConfigureAwait(false);
+                    await Task.Delay(decision.DelayMs, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
-
-                retryDelayMs = Math.Min(retryDelayMs * 2, 32000);
             }
         }
     }
@@ -1024,9 +1056,9 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                 return ("mcp-gateway への認証が必要です。mcp-resource-subscriber の --login を実行して再認証してください。", _authenticationRequiredErrorTag);
             }
 
-            if (_subscriptionErrorCodeMessages.TryGetValue(structuredErrorCode, out string? specificMessage))
+            if (_subscriptionErrorCodeMessages.TryGetValue(structuredErrorCode, out (string Message, string Tag) known))
             {
-                return (specificMessage, "[GENERAL_ERROR]");
+                return (known.Message, known.Tag);
             }
 
             // ホワイトリスト方式: 意味が確定している非認証 ErrorCode のみ legacy
