@@ -1156,6 +1156,85 @@ public class McpSubscriptionServiceTests : IDisposable
         service.LastError.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("[]", false)] // 空キュー: 候補が無い正常状態。警告も payload ログも出さない（#230）
+    [InlineData("[ ]", false)]
+    [InlineData("{invalid-json}", true)]
+    [InlineData("[{\"owner\":\"\",\"repo\":\"\",\"prNumber\":1}]", true)]
+    public async Task Start_WithEventlessInitialText_ShouldWarnOnlyForMalformedPayload(string initialText, bool expectWarning)
+    {
+        // Arrange
+        string timeoutJson = JsonSerializer.Serialize(new SubscriptionResult
+        {
+            Route = "timeout",
+            ErrorCode = "NOTIFICATION_TIMEOUT",
+            NotificationReceived = false,
+            InitialText = initialText,
+        });
+
+        var logLines = new List<string>();
+        void OnLogAppended(object? sender, string line)
+        {
+            lock (logLines)
+            {
+                logLines.Add(line);
+            }
+        }
+
+        _loggingService.LogAppended += OnLogAppended;
+
+        var preflightProcess = CreateMockProcess(0, "help", "");
+        var testCts = new CancellationTokenSource();
+        int subscriptionCallCount = 0;
+        var mockRunner = new Mock<IProcessRunner>();
+        mockRunner.Setup(r => r.Start(It.IsAny<ProcessStartInfo>()))
+            .Returns<ProcessStartInfo>(psi =>
+            {
+                if (psi.ArgumentList.Contains("--help"))
+                {
+                    return preflightProcess;
+                }
+
+                subscriptionCallCount++;
+                if (subscriptionCallCount >= 2)
+                {
+                    testCts.Cancel();
+                }
+
+                return CreateMockProcess(1, timeoutJson, "");
+            });
+
+        var service = new McpSubscriptionService(_settingsService, _notificationService, _loggingService, mockRunner.Object, maxRetries: 0);
+        var runMethod = typeof(McpSubscriptionService).GetMethod("RunSubscriptionLoopAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        // Act
+        try
+        {
+            var task = (Task)runMethod!.Invoke(service, new object[] { testCts.Token })!;
+            await task;
+        }
+        finally
+        {
+            _loggingService.LogAppended -= OnLogAppended;
+        }
+
+        // Assert
+        List<string> captured;
+        lock (logLines)
+        {
+            captured = new List<string>(logLines);
+        }
+
+        _mockNotificationService.Verify(n => n.NotifyReviewEvent(It.IsAny<ReviewEvent>()), Times.Never);
+
+        bool hasMalformedWarning = captured.Exists(line => line.Contains("Malformed or unsupported", StringComparison.Ordinal));
+        hasMalformedWarning.Should().Be(expectWarning);
+
+        // イベントが 1 件も無い payload は、警告の有無にかかわらず生 payload を再掲しない
+        bool hasPayloadEcho = captured.Exists(line => line.Contains("InitialText payload received", StringComparison.Ordinal));
+        hasPayloadEcho.Should().BeFalse();
+    }
+
     [Fact]
     public async Task Start_WithSameCandidateInInitialAndFinalText_ShouldNotifyOnce()
     {

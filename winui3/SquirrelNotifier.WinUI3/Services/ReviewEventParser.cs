@@ -12,13 +12,21 @@ namespace SquirrelNotifier.WinUI3.Services;
 
 internal static class ReviewEventParser
 {
-    public static List<ReviewEvent> Parse(string? json, string? sourceUri = null)
+    /// <summary>
+    /// review event payload を解釈する。空配列（キューに候補が無い正常状態）と
+    /// 壊れた payload を <see cref="ReviewEventParseResult.Status"/> で区別する（#230）.
+    /// </summary>
+    /// <param name="json">thread-owl queue から受け取った payload.</param>
+    /// <param name="sourceUri">イベントの取得元 resource URI。指定した場合は payload 内の source を上書きする.</param>
+    /// <returns>解釈結果。<see cref="ReviewEventParseStatus.Parsed"/> の場合のみ Events が有効な内容を持つ.</returns>
+    public static ReviewEventParseResult Parse(string? json, string? sourceUri = null)
     {
-        List<ReviewEvent> events = new List<ReviewEvent>();
         if (string.IsNullOrWhiteSpace(json))
         {
-            return events;
+            return ReviewEventParseResult.Empty;
         }
+
+        List<ReviewEvent> events = new List<ReviewEvent>();
 
         try
         {
@@ -31,19 +39,26 @@ internal static class ReviewEventParser
             if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
             {
                 List<ReviewCandidate>? candidates = JsonSerializer.Deserialize<List<ReviewCandidate>>(trimmed, options);
-                if (candidates != null)
+                if (candidates == null)
                 {
-                    foreach (ReviewCandidate candidate in candidates)
+                    return ReviewEventParseResult.Malformed;
+                }
+
+                if (candidates.Count == 0)
+                {
+                    return ReviewEventParseResult.Empty;
+                }
+
+                foreach (ReviewCandidate candidate in candidates)
+                {
+                    try
                     {
-                        try
-                        {
-                            ReviewEvent reviewEvent = ConvertToEvent(candidate, sourceUri);
-                            events.Add(reviewEvent);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Failed to parse candidate: {ex.Message}");
-                        }
+                        ReviewEvent reviewEvent = ConvertToEvent(candidate, sourceUri);
+                        events.Add(reviewEvent);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to parse candidate: {ex.Message}");
                     }
                 }
             }
@@ -62,7 +77,7 @@ internal static class ReviewEventParser
                         }
 
                         events.Add(reviewEvent);
-                        return events;
+                        return ReviewEventParseResult.Parsed(events);
                     }
                 }
 
@@ -84,10 +99,14 @@ internal static class ReviewEventParser
         }
         catch
         {
-            // ignore
+            return ReviewEventParseResult.Malformed;
         }
 
-        return events;
+        // ここに到達して 0 件なのは「JSON ではない」「想定スキーマから 1 件も構築できなかった」
+        // のいずれか。空配列（正常な空キュー）は上で早期 return 済み
+        return events.Count == 0
+            ? ReviewEventParseResult.Malformed
+            : ReviewEventParseResult.Parsed(events);
     }
 
     private static ReviewEvent ConvertToEvent(ReviewCandidate candidate, string? sourceUri = null)
