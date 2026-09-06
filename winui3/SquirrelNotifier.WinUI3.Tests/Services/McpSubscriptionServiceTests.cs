@@ -2011,6 +2011,50 @@ public class McpSubscriptionServiceTests : IDisposable
         tagResult.Should().NotBe("[AUTH_REQUIRED]");
     }
 
+    // mcp-resource-subscriber の networkErrorClassification が返す 3 コード（#236 レビュー指摘）。
+    // undici はいずれも "fetch failed" として包むため、legacy 文字列判定へ落とすと TLS 証明書
+    // 不信頼・DNS 解決失敗まで [CONN_REFUSED] になり、gateway 起動待ち（5 分）に入って
+    // 設定エラーの確定が遅れる。待機してよいのは CONNECTION_REFUSED だけ。
+    [Theory]
+    [InlineData("CONNECTION_REFUSED", "接続を拒否されました", "[CONN_REFUSED]", true)]
+    [InlineData("TLS_CERT_UNTRUSTED", "NODE_EXTRA_CA_CERTS", "[TLS_CERT_UNTRUSTED]", false)]
+    [InlineData("DNS_LOOKUP_FAILED", "ホスト名を解決できませんでした", "[DNS_LOOKUP_FAILED]", false)]
+    public void ErrorMessageMapping_WithNetworkErrorCode_ShouldOnlyTreatConnectionRefusedAsDependencyWait(
+        string structuredErrorCode,
+        string expectedFragment,
+        string expectedTag,
+        bool expectedWaitsForDependency)
+    {
+        // Arrange: undici の "fetch failed" が diagnosticText に含まれる実際の形
+        string rawError = $"Subscriber process exited with non-zero code 3. ErrorCode: {structuredErrorCode}.";
+        string diagnosticText = "subscribe-probe failed: fetch failed";
+
+        // Act
+        var (friendlyResult, tagResult) = McpSubscriptionService.GetErrorInfo(
+            rawError, structuredErrorCode, diagnosticText);
+
+        // Assert
+        friendlyResult.Should().Contain(expectedFragment);
+        tagResult.Should().Be(expectedTag);
+
+        // 待機経路に入るのは CONNECTION_REFUSED のみであること
+        SubscriptionRetryPolicy.Decide(tagResult, 1, 0, maxRetries: 5)
+            .IsWaitingForDependency.Should().Be(expectedWaitsForDependency);
+    }
+
+    [Theory]
+    [InlineData("TLS_CERT_UNTRUSTED")]
+    [InlineData("DNS_LOOKUP_FAILED")]
+    public void ErrorMessageMapping_WithNonRetriableNetworkErrorCode_ShouldGiveUpAfterMaxRetries(string structuredErrorCode)
+    {
+        // 待っても解決しない設定エラーは、経過時間に関係なく回数上限で確定させる
+        var (_, tagResult) = McpSubscriptionService.GetErrorInfo(
+            "Subscriber process exited with non-zero code 3.", structuredErrorCode, "subscribe-probe failed: fetch failed");
+
+        SubscriptionRetryPolicy.Decide(tagResult, 6, consecutiveFailureElapsedMs: 0, maxRetries: 5)
+            .ShouldRetry.Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("INTERNAL_ERROR", "full raw message", "gateway rejected token: invalid_token", "mcp-gateway への認証が必要です。mcp-resource-subscriber の --login を実行して再認証してください。", "[AUTH_REQUIRED]")]
     [InlineData("SUBSCRIPTION_FAILED", "full raw message", "gateway rejected token: invalid_token", "mcp-gateway への認証が必要です。mcp-resource-subscriber の --login を実行して再認証してください。", "[AUTH_REQUIRED]")]

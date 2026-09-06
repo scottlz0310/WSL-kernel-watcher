@@ -35,12 +35,21 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     // mcp-resource-subscriber v0.6.0（MCP 2026-07-28 移行）で新設された ErrorCode。
     // いずれも原因が確定しているため、汎用の「予期しないエラー」ではなく次の行動が
     // 分かるメッセージを返す。ホワイトリストより先に判定する。
-    private static readonly Dictionary<string, string> _subscriptionErrorCodeMessages = new(StringComparer.OrdinalIgnoreCase)
+    //
+    // ネットワーク系の 3 コード（networkErrorClassification.ts 由来）はエラータグを
+    // 個別に持つ。undici はこれらをすべて `fetch failed` として包むため、legacy 文字列
+    // 判定に落とすと TLS 証明書不信頼や DNS 解決失敗まで [CONN_REFUSED] になり、
+    // SubscriptionRetryPolicy の gateway 起動待ち（5 分）に入って設定エラーの確定と
+    // 案内が遅れる。待機してよいのは CONNECTION_REFUSED だけ.
+    private static readonly Dictionary<string, (string Message, string Tag)> _subscriptionErrorCodeMessages = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["SUBSCRIPTION_DISCONNECTED"] = "購読ストリームがサーバー側から切断されました。mcp-gateway と thread-owl が稼働しているか確認してください。",
-        ["SUBSCRIPTION_CLOSED"] = "購読ストリームが閉じられました。",
-        ["SUBSCRIPTION_NOT_HONORED"] = "サーバーが Resource URI の購読を受け付けませんでした。Resource URI の設定が正しいか確認してください。",
-        ["PROTOCOL_UNSUPPORTED"] = "接続先が MCP プロトコル 2026-07-28 に未対応です。mcp-gateway と接続先サーバーを 2026-07-28 対応版へ更新してください。",
+        ["SUBSCRIPTION_DISCONNECTED"] = ("購読ストリームがサーバー側から切断されました。mcp-gateway と thread-owl が稼働しているか確認してください。", "[GENERAL_ERROR]"),
+        ["SUBSCRIPTION_CLOSED"] = ("購読ストリームが閉じられました。", "[GENERAL_ERROR]"),
+        ["SUBSCRIPTION_NOT_HONORED"] = ("サーバーが Resource URI の購読を受け付けませんでした。Resource URI の設定が正しいか確認してください。", "[GENERAL_ERROR]"),
+        ["PROTOCOL_UNSUPPORTED"] = ("接続先が MCP プロトコル 2026-07-28 に未対応です。mcp-gateway と接続先サーバーを 2026-07-28 対応版へ更新してください。", "[GENERAL_ERROR]"),
+        ["CONNECTION_REFUSED"] = ("mcp-gateway への接続を拒否されました。mcp-gateway コンテナが起動しているか、または Gateway URL の設定が正しいか確認してください。", SubscriptionRetryPolicy.DependencyNotReadyErrorTag),
+        ["TLS_CERT_UNTRUSTED"] = ("mcp-gateway の TLS 証明書が信頼されていません。ローカル CA（mkcert 等）を使用している場合は、CA ルート証明書のパスを NODE_EXTRA_CA_CERTS に設定してください。", "[TLS_CERT_UNTRUSTED]"),
+        ["DNS_LOOKUP_FAILED"] = ("Gateway URL のホスト名を解決できませんでした。ホスト名の誤りがないか、DNS が疎通しているかを確認してください。", "[DNS_LOOKUP_FAILED]"),
     };
 
     private readonly SettingsService _settingsService;
@@ -1047,9 +1056,9 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                 return ("mcp-gateway への認証が必要です。mcp-resource-subscriber の --login を実行して再認証してください。", _authenticationRequiredErrorTag);
             }
 
-            if (_subscriptionErrorCodeMessages.TryGetValue(structuredErrorCode, out string? specificMessage))
+            if (_subscriptionErrorCodeMessages.TryGetValue(structuredErrorCode, out (string Message, string Tag) known))
             {
-                return (specificMessage, "[GENERAL_ERROR]");
+                return (known.Message, known.Tag);
             }
 
             // ホワイトリスト方式: 意味が確定している非認証 ErrorCode のみ legacy
