@@ -757,14 +757,22 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
             return;
         }
 
-        await LogAsync($"{payloadName} payload received: {payload}").ConfigureAwait(false);
-
-        List<ReviewEvent> reviewEvents = ReviewEventParser.Parse(payload, resourceUri);
-        if (reviewEvents.Count == 0)
+        ReviewEventParseResult parseResult = ReviewEventParser.Parse(payload, resourceUri);
+        if (parseResult.Status == ReviewEventParseStatus.Malformed)
         {
             await LogAsync($"Warning: Malformed or unsupported {payloadName} review event payload received: {payload}").ConfigureAwait(false);
             return;
         }
+
+        IReadOnlyList<ReviewEvent> reviewEvents = parseResult.Events;
+        if (reviewEvents.Count == 0)
+        {
+            // 空キューは最も頻度の高い正常状態。再購読サイクル（既定 60 秒）ごとに記録すると
+            // ログが偽の情報で埋まり、本当の異常が読めなくなるため何も出さない（#230）
+            return;
+        }
+
+        await LogAsync($"{payloadName} payload received: {payload}").ConfigureAwait(false);
 
         foreach (ReviewEvent reviewEvent in reviewEvents)
         {

@@ -18,11 +18,12 @@ public class ReviewEventParserTests
         string json = "{\"eventId\":\"evt_1\",\"repository\":\"org/repo\",\"prNumber\":42,\"prUrl\":\"https://github.com/org/repo/pull/42\",\"reason\":\"test\",\"source\":\"src\",\"message\":\"msg\"}";
 
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json);
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
 
         // Assert
-        result.Should().ContainSingle();
-        ReviewEvent reviewEvent = result[0];
+        result.Status.Should().Be(ReviewEventParseStatus.Parsed);
+        result.Events.Should().ContainSingle();
+        ReviewEvent reviewEvent = result.Events[0];
         reviewEvent.EventId.Should().Be("evt_1");
         reviewEvent.Repository.Should().Be("org/repo");
         reviewEvent.PrNumber.Should().Be(42);
@@ -33,18 +34,34 @@ public class ReviewEventParserTests
     }
 
     [Theory]
+    [InlineData("[]")] // 空キュー: 候補が無い正常状態（#230）
+    [InlineData("[ ]")]
     [InlineData("")]
     [InlineData(null)]
+    public void Parse_EmptyPayload_ShouldBeParsedWithoutEvents(string? json)
+    {
+        // Act
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
+
+        // Assert
+        result.Status.Should().Be(ReviewEventParseStatus.Parsed);
+        result.Events.Should().BeEmpty();
+    }
+
+    [Theory]
     [InlineData("not a json")]
     [InlineData("{\"eventId\":\"evt_1\"}")] // missing repository and prUrl
     [InlineData("{\"eventId\":\"evt_1\",\"repository\":\"org/repo\",\"prUrl\":\"http://unsafe.com\"}")] // unsafe URL
-    public void Parse_InvalidJson_ShouldReturnEmptyList(string? json)
+    [InlineData("[{\"owner\":\"\",\"repo\":\"\",\"prNumber\":1}]")] // 配列だが 1 件も構築できない
+    [InlineData("[{\"owner\":\"org\"")] // 途中で切れた JSON
+    public void Parse_InvalidPayload_ShouldBeMalformed(string? json)
     {
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json);
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
 
         // Assert
-        result.Should().BeEmpty();
+        result.Status.Should().Be(ReviewEventParseStatus.Malformed);
+        result.Events.Should().BeEmpty();
     }
 
     [Fact]
@@ -54,11 +71,12 @@ public class ReviewEventParserTests
         string json = "[{\"owner\":\"org\",\"repo\":\"repo\",\"prNumber\":42,\"queuedAt\":\"2026-06-13T22:00:00Z\",\"reason\":\"test\",\"requestedBy\":\"src\"}]";
 
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json);
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
 
         // Assert
-        result.Should().ContainSingle();
-        ReviewEvent reviewEvent = result[0];
+        result.Status.Should().Be(ReviewEventParseStatus.Parsed);
+        result.Events.Should().ContainSingle();
+        ReviewEvent reviewEvent = result.Events[0];
         reviewEvent.EventId.Should().Be("evt_org_repo_42_test_2026-06-13T22_00_00Z");
         reviewEvent.Repository.Should().Be("org/repo");
         reviewEvent.PrNumber.Should().Be(42);
@@ -71,13 +89,32 @@ public class ReviewEventParserTests
     [Theory]
     [InlineData("{\"eventId\":\"evt_1\",\"repository\":\"org/repo\",\"prNumber\":42,\"prUrl\":\"https://github.com/attacker/repo/pull/42\"}")] // repository mismatch in object
     [InlineData("{\"eventId\":\"evt_1\",\"repository\":\"org/repo\",\"prNumber\":42,\"prUrl\":\"https://github.com/org/repo/pull/43\"}")] // prNumber mismatch in object
-    public void Parse_UnmatchedUrlInEvent_ShouldReturnEmptyList(string json)
+    public void Parse_UnmatchedUrlInEvent_ShouldBeMalformed(string json)
     {
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json);
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
 
         // Assert
-        result.Should().BeEmpty();
+        result.Status.Should().Be(ReviewEventParseStatus.Malformed);
+        result.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Parse_ArrayWithSomeUnusableCandidates_ShouldReturnUsableEvents()
+    {
+        // Arrange: 1 件目は owner が空で構築できないが、2 件目は妥当
+        string json = @"[
+            { ""owner"": """", ""repo"": ""repo"", ""prNumber"": 1, ""reason"": ""broken"" },
+            { ""owner"": ""org"", ""repo"": ""repo"", ""prNumber"": 42, ""queuedAt"": ""2026-06-13T22:00:00Z"", ""reason"": ""test"" }
+        ]";
+
+        // Act
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
+
+        // Assert
+        result.Status.Should().Be(ReviewEventParseStatus.Parsed);
+        result.Events.Should().ContainSingle();
+        result.Events[0].PrNumber.Should().Be(42);
     }
 
     [Fact]
@@ -106,12 +143,13 @@ public class ReviewEventParserTests
         ]";
 
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json);
+        ReviewEventParseResult result = ReviewEventParser.Parse(json);
 
         // Assert
-        result.Should().HaveCount(2);
+        result.Status.Should().Be(ReviewEventParseStatus.Parsed);
+        result.Events.Should().HaveCount(2);
 
-        ReviewEvent first = result[0];
+        ReviewEvent first = result.Events[0];
         first.EventId.Should().Be("evt_scottlz0310_squirrel-notifier_56_review_requested_2026-06-13T22_00_00Z");
         first.Repository.Should().Be("scottlz0310/squirrel-notifier");
         first.PrNumber.Should().Be(56);
@@ -120,7 +158,7 @@ public class ReviewEventParserTests
         first.Source.Should().Be("some-user");
         first.Message.Should().Be("review requested by some-user");
 
-        ReviewEvent second = result[1];
+        ReviewEvent second = result.Events[1];
         second.EventId.Should().Be("evt_scottlz0310_squirrel-notifier_56_re-review_requested_2026-06-13T22_05_00Z");
         second.Repository.Should().Be("scottlz0310/squirrel-notifier");
         second.PrNumber.Should().Be(56);
@@ -143,11 +181,11 @@ public class ReviewEventParserTests
         }]";
 
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json, "queue://review/re-review-requests");
+        ReviewEventParseResult result = ReviewEventParser.Parse(json, "queue://review/re-review-requests");
 
         // Assert
-        result.Should().ContainSingle();
-        result[0].Source.Should().Be("queue://review/re-review-requests");
+        result.Events.Should().ContainSingle();
+        result.Events[0].Source.Should().Be("queue://review/re-review-requests");
     }
 
     [Fact]
@@ -157,10 +195,10 @@ public class ReviewEventParserTests
         string json = "{\"eventId\":\"evt_1\",\"repository\":\"org/repo\",\"prNumber\":42,\"prUrl\":\"https://github.com/org/repo/pull/42\",\"reason\":\"re-review-requested\",\"source\":\"thread-owl\",\"message\":\"msg\"}";
 
         // Act
-        List<ReviewEvent> result = ReviewEventParser.Parse(json, "queue://review/re-review-requests");
+        ReviewEventParseResult result = ReviewEventParser.Parse(json, "queue://review/re-review-requests");
 
         // Assert
-        result.Should().ContainSingle();
-        result[0].Source.Should().Be("queue://review/re-review-requests");
+        result.Events.Should().ContainSingle();
+        result.Events[0].Source.Should().Be("queue://review/re-review-requests");
     }
 }
