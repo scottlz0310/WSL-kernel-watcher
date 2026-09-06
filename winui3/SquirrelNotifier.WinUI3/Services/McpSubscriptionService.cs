@@ -50,6 +50,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     private readonly ICacheService? _cacheService;
     private readonly SecretMasker _secretMasker;
     private readonly int _maxRetries;
+    private readonly int _dependencyWaitBudgetMs;
     private readonly int _startTimeoutMs;
     private readonly CancellationTokenSource _cts = new();
     private readonly HashSet<string> _seenEventIds = new();
@@ -107,7 +108,8 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
         int maxRetries = 5,
         ICacheService? cacheService = null,
         SecretMasker? secretMasker = null,
-        int startTimeoutMs = _defaultStartTimeoutMs)
+        int startTimeoutMs = _defaultStartTimeoutMs,
+        int dependencyWaitBudgetMs = SubscriptionRetryPolicy.DefaultDependencyWaitBudgetMs)
     {
         _settingsService = settingsService;
         _notificationService = notificationService;
@@ -117,6 +119,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
         _cacheService = cacheService;
         _secretMasker = secretMasker ?? SecretMasker.CreateDefault();
         _startTimeoutMs = startTimeoutMs;
+        _dependencyWaitBudgetMs = dependencyWaitBudgetMs;
     }
 
     public void Start()
@@ -567,7 +570,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
     private async Task RunSingleUriLoopAsync(string resourceUri, CancellationToken token)
     {
         int retryCount = 0;
-        int retryDelayMs = 1000;
+        long? firstFailureTick = null;
 
         while (!token.IsCancellationRequested)
         {
@@ -706,7 +709,7 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                 }
 
                 retryCount = 0;
-                retryDelayMs = 1000;
+                firstFailureTick = null;
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -716,11 +719,20 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
             catch (Exception ex)
             {
                 retryCount++;
+                firstFailureTick ??= Environment.TickCount64;
+                long failureElapsedMs = Environment.TickCount64 - firstFailureTick.Value;
                 string? structuredErrorCode = (ex as SubscriberProcessException)?.ErrorCode;
                 string? diagnosticText = (ex as SubscriberProcessException)?.DiagnosticText;
                 (string friendlyMessage, string tag) = GetErrorInfo(ex.Message, structuredErrorCode, diagnosticText);
 
-                if (retryCount > _maxRetries)
+                SubscriptionRetryDecision decision = SubscriptionRetryPolicy.Decide(
+                    tag,
+                    retryCount,
+                    failureElapsedMs,
+                    _maxRetries,
+                    _dependencyWaitBudgetMs);
+
+                if (!decision.ShouldRetry)
                 {
                     // 停止処理中は Error を書き戻さない（LastError / 状態表示も更新しない）。
                     // 障害の記録はログに残す
@@ -729,23 +741,34 @@ internal sealed class McpSubscriptionService : IAsyncDisposable, IReviewSubscrip
                         ReportStatus($"Error: {friendlyMessage}");
                     }
 
-                    await LogAsync($"[{resourceUri}] Subscription loop error (max retries exceeded) {tag}: {ex.Message}").ConfigureAwait(false);
+                    string giveUpReason = decision.IsWaitingForDependency
+                        ? $"dependency wait budget exceeded after {failureElapsedMs / 1000}s"
+                        : "max retries exceeded";
+                    await LogAsync($"[{resourceUri}] Subscription loop error ({giveUpReason}) {tag}: {ex.Message}").ConfigureAwait(false);
                     break;
                 }
 
-                await LogAsync($"[{resourceUri}] Subscription loop error (retry {retryCount}/{_maxRetries}) {tag}: {ex.Message}").ConfigureAwait(false);
-                ReportStatus($"Retrying ({retryCount}/{_maxRetries})...");
+                if (decision.IsWaitingForDependency)
+                {
+                    // 接続拒否は依存サービス（Docker / WSL2 / mcp-gateway コンテナ）が
+                    // まだ Ready でないだけのことが多いため、確定エラーにせず待つ（#236）
+                    await LogAsync($"[{resourceUri}] Waiting for mcp-gateway to become ready ({failureElapsedMs / 1000}s / {_dependencyWaitBudgetMs / 1000}s) {tag}: {ex.Message}").ConfigureAwait(false);
+                    ReportStatus($"mcp-gateway の起動を待機中... ({failureElapsedMs / 1000}s / {_dependencyWaitBudgetMs / 1000}s)");
+                }
+                else
+                {
+                    await LogAsync($"[{resourceUri}] Subscription loop error (retry {retryCount}/{_maxRetries}) {tag}: {ex.Message}").ConfigureAwait(false);
+                    ReportStatus($"Retrying ({retryCount}/{_maxRetries})...");
+                }
 
                 try
                 {
-                    await Task.Delay(retryDelayMs, token).ConfigureAwait(false);
+                    await Task.Delay(decision.DelayMs, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
-
-                retryDelayMs = Math.Min(retryDelayMs * 2, 32000);
             }
         }
     }
