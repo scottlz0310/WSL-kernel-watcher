@@ -855,17 +855,17 @@ internal sealed partial class MainWindow : Window
                     continue;
                 }
 
-                Models.RateLimitSnapshot? parsedSnapshot = Services.RateLimitStatusParser.ParseSnapshot(json);
+                Models.RateLimitSnapshot? parsedSnapshot = Helpers.RateLimitStatusParser.ParseSnapshot(json);
                 if (parsedSnapshot is not null)
                 {
                     capturedSnapshots[agent.Id] = parsedSnapshot;
                 }
-                else if (Services.RateLimitStatusParser.IsLegacySchema(json))
+                else if (Helpers.RateLimitStatusParser.IsLegacySchema(json))
                 {
                     legacySchemaAgentNames.Add(agent.DisplayName);
                 }
 
-                fetchedLimits.AddRange(Services.RateLimitStatusParser.Parse(json, Services.RateLimitFileService.BuildSourceIdentifier(agent.Id)));
+                fetchedLimits.AddRange(Helpers.RateLimitStatusParser.Parse(json, Services.RateLimitFileService.BuildSourceIdentifier(agent.Id)));
             }
             catch (Exception ex)
             {
@@ -876,7 +876,7 @@ internal sealed partial class MainWindow : Window
         // 2. MCP ratelimit:// 経由（既存。サーバー側で将来対応された場合のために維持）
         List<string> rateLimitUris = ResourceUrisBox.Text
             .Split(_resourceUriLineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(uri => uri.StartsWith(Services.RateLimitStatusParser.UriScheme, StringComparison.OrdinalIgnoreCase))
+            .Where(uri => uri.StartsWith(Helpers.RateLimitStatusParser.UriScheme, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         // MCP 側の取得に失敗しても、既にローカルファイル経由で取得済みの結果は破棄せず
@@ -898,7 +898,7 @@ internal sealed partial class MainWindow : Window
                     try
                     {
                         string json = await probe.ReadResourceTextAsync(endpoint, token, uri, CancellationToken.None).ConfigureAwait(true);
-                        fetchedLimits.AddRange(Services.RateLimitStatusParser.Parse(json, uri));
+                        fetchedLimits.AddRange(Helpers.RateLimitStatusParser.Parse(json, uri));
                     }
                     catch (Exception ex)
                     {

@@ -3,9 +3,9 @@
 // </copyright>
 
 using FluentAssertions;
-using SquirrelNotifier.WinUI3.Services;
+using SquirrelNotifier.WinUI3.Helpers;
 
-namespace SquirrelNotifier.WinUI3.Tests.Services;
+namespace SquirrelNotifier.WinUI3.Tests.Helpers;
 
 // 判定対象の enum は internal のため、InlineData では名前で受け取り Enum.Parse で解決する
 public sealed class ReviewAutoStartPolicyTests

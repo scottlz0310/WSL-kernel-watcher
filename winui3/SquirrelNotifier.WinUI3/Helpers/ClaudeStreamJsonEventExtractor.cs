@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using SquirrelNotifier.WinUI3.Models;
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 /// <summary>
 /// Claude Code CLI の <c>--output-format stream-json</c> が stdout へ出力する JSONL イベントから、

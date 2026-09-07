@@ -9,6 +9,9 @@ pre-commit:
       run: pwsh -File scripts/hooks/pre-commit-format.ps1
     dotnet-build:
       run: pwsh -File scripts/hooks/pre-commit-build.ps1
+    # CI と同じチェックをローカルでも先に回す（#263）
+    code-behind-size:
+      run: pwsh -File scripts/check-code-behind-size.ps1
 
 pre-push:
   commands:

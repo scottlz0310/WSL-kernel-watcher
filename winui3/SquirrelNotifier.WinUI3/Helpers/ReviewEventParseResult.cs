@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using SquirrelNotifier.WinUI3.Models;
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 /// <summary>review event payload のパース結果の種類（#230）.</summary>
 internal enum ReviewEventParseStatus

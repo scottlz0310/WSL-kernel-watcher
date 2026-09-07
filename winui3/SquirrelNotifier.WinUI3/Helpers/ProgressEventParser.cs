@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SquirrelNotifier.WinUI3.Models;
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 /// <summary>
 /// stdout に混在する構造化 progress event（行頭マーカー付き JSONL）のパーサー（#143）。

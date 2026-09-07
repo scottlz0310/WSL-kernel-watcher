@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- コードの置き場所を `AGENTS.md` に明文化し、`*.xaml.cs` の肥大化を検知する行数チェックを追加した（#263、epic #262）。`MainWindow.xaml.cs` が 2,058 行まで肥大化し、判断を持つコードが約 800 行、カバレッジ計測の対象外（`ExcludeByFile` / `codecov.yml` の `ignore`）に置かれていた。codecov の `ignore` は patch ゲートにも効くため、`*.xaml.cs` だけを触る PR は patch coverage の分母が空になり 80% ゲートを素通りする。「ロジックを code-behind に書けばテストを書かずに済む」という逆向きのインセンティブが働いていた。置き場所の基準を「状態と依存を持つか」で定義し、`Helpers/` は状態を持たない型（DI されず入力と出力だけでテストできる）、`Services/` は状態を持つか DI 対象の型とした。`*.xaml.cs` には判断・状態・I/O・文字列の組み立て規則を置かない。除外設定自体は維持する（WinUI 3 の `Window` / `UserControl` はプレーンな xUnit プロセスで instantiate できず、外せば書けないテストのために CI が落ち続けるため）。除外を外すのではなく除外領域を薄く保つ方針
+- この基準に従い、`Services/` にあった状態を持たない 8 型を `Helpers/` へ移動した（#263）。`ReviewNotificationPolicy` / `ReviewAutoStartPolicy` / `RateLimitFreshnessPolicy` / `ProgressEventParser` / `RateLimitStatusParser` / `ClaudeStreamJsonEventExtractor` / `ReviewEventParser` / `ReviewEventParseResult` とそれぞれのテスト。既存の `Helpers/` 21 件はすべて基準を満たしているため移動していない。型の実装は変更していない
+- 型の移動にあわせて `Services/RateLimitFileService.cs` のドキュメントコメントの `cref` を `Helpers.RateLimitStatusParser` へ修正した（#263）。通常ビルドは `GenerateDocumentationFile` が無効なため、解決不能な `cref` があっても CI・テスト・`dotnet format` はすべて緑のまま通る。この検知手段の不在は #271 で別途扱う
+- `scripts/check-code-behind-size.ps1` を追加し、CI の `lint` ジョブと lefthook の pre-commit で実行するようにした（#263）。ファイルごとの行数上限を現在の実測値に設定する ratchet 方式で、抽出が進んだら上限も下げる。上限を超える追加は同じ PR で上限を引き上げれば通るが、無意識には増やせない。上限が未登録の `*.xaml.cs` を追加した場合も失敗する。行数は空行を含む物理行数で数える（`Measure-Object -Line` は空行を数えず、エディタや `wc -l` が示す行数と食い違うため）
+
 ## [0.8.0] - 2026-09-07
 
 v0.7.0 で「既知の問題」として挙げた 5 件をすべて解消し、あわせてレビューサイクルの自動化を一歩進めたリリースです。

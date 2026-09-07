@@ -3,10 +3,10 @@
 // </copyright>
 
 using FluentAssertions;
-using SquirrelNotifier.WinUI3.Services;
+using SquirrelNotifier.WinUI3.Helpers;
 using Xunit;
 
-namespace SquirrelNotifier.WinUI3.Tests.Services;
+namespace SquirrelNotifier.WinUI3.Tests.Helpers;
 
 public class RateLimitFreshnessPolicyTests
 {

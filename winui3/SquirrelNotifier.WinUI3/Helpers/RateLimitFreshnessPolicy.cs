@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 /// <summary>
 /// レートリミットスナップショットの鮮度判定（#145）。Delta 計算と Auto-Pause（#147）の

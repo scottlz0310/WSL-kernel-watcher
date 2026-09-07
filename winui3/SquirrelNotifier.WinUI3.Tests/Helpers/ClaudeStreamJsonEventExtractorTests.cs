@@ -4,11 +4,11 @@
 
 using System.Linq;
 using FluentAssertions;
+using SquirrelNotifier.WinUI3.Helpers;
 using SquirrelNotifier.WinUI3.Models;
-using SquirrelNotifier.WinUI3.Services;
 using Xunit;
 
-namespace SquirrelNotifier.WinUI3.Tests.Services;
+namespace SquirrelNotifier.WinUI3.Tests.Helpers;
 
 public class ClaudeStreamJsonEventExtractorTests
 {
