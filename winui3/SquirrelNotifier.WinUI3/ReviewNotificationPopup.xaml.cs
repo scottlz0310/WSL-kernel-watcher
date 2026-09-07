@@ -29,11 +29,21 @@ public sealed partial class ReviewNotificationPopup : UserControl
 
     internal event EventHandler? DismissRequested;
 
-    internal void SetReviewEvent(ReviewEvent reviewEvent)
+    /// <summary>
+    /// 表示するレビューイベントを設定する.
+    /// </summary>
+    /// <param name="reviewEvent">表示対象のイベント.</param>
+    /// <param name="isAutoStarted">
+    /// このイベントで reviewer を自動起動したか（#254）。自動起動済みの場合は事後報告に徹し、
+    /// 押しても同時実行抑止で弾かれるだけの「レビューする」を出さない.
+    /// </param>
+    internal void SetReviewEvent(ReviewEvent reviewEvent, bool isAutoStarted = false)
     {
         ArgumentNullException.ThrowIfNull(reviewEvent);
         _reviewEvent = reviewEvent;
-        TitleText.Text = $"{reviewEvent.Reason}: {reviewEvent.Repository}#{reviewEvent.PrNumber}";
+        TitleText.Text = isAutoStarted
+            ? $"自動でレビューを開始しました: {reviewEvent.Repository}#{reviewEvent.PrNumber}"
+            : $"{reviewEvent.Reason}: {reviewEvent.Repository}#{reviewEvent.PrNumber}";
         MessageText.Text = reviewEvent.Message;
         OpenPrButton.Visibility = UrlValidator.IsSafeGitHubUrl(
             reviewEvent.PrUrl,
@@ -41,7 +51,7 @@ public sealed partial class ReviewNotificationPopup : UserControl
             reviewEvent.PrNumber)
             ? Visibility.Visible
             : Visibility.Collapsed;
-        LaunchReviewButton.Visibility = ReviewNotificationPolicy.ShouldOfferReviewerAction(reviewEvent.Reason)
+        LaunchReviewButton.Visibility = !isAutoStarted && ReviewNotificationPolicy.ShouldOfferReviewerAction(reviewEvent.Reason)
             ? Visibility.Visible
             : Visibility.Collapsed;
     }

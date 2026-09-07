@@ -143,6 +143,9 @@ uninstall.cmd -KeepSettings
 - **Resource URI**: 監視対象の MCP リソース URI（例: queue://review/queue）
 - **Timeout (ms)**: タイムアウトミリ秒（1〜300,000 ms）
 - **Checkout Mappings**: reviewed 側の「レビューに対応」で使う checkout を `owner/repo=C:\src\repo` 形式で1行に1件指定
+- **レビュー自動開始**: review event を受信した時点で reviewer 側エージェントを自動起動するか（既定は無効）
+
+「レビュー自動開始」を有効にすると、`opened` / `synchronized` / `re-review-requested` のイベント受信時に「レビューする」を押したのと同じ経路でエージェントが起動します。無人で起動するため、[Auto-Pause](docs/auto-pause.md) が Paused のとき、および別のレビューが実行中のときは自動起動せず、理由をメイン画面の「Recent activity」に記録します（Auto-Pause の強行確認ダイアログは自動起動では表示しません）。自動起動を見送ったイベントはイベント一覧に残るため、「レビューする」から手動で起動できます。
 
 launcher の作業ディレクトリはロールごとに固定されます。「レビューする」（reviewer）は `%LocalAppData%\SquirrelNotifier\launcher-workspace\reviewer` から起動し、対象 checkout を直接操作しません。「レビューに対応」（reviewed）は Checkout Mappings に登録した Git checkout から起動します。mapping が未設定、存在しない、Git checkout ではない、または Windows／Program Files／アプリのインストール先を指す場合は、プロセスを起動せずエラーにします。タスクスケジューラーやアプリの起動元ディレクトリには依存しません。
 

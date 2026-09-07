@@ -154,6 +154,7 @@ internal sealed partial class MainWindow : Window
         RepositoryCheckoutMappingsBox.Text = Helpers.RepositoryCheckoutMappingParser.Format(settings.RepositoryCheckoutMappings);
         LauncherTimeoutBox.Value = settings.LauncherTimeoutMs;
         LiveLogAutoCloseToggle.IsOn = settings.LiveLogAutoCloseEnabled;
+        AutoReviewStartToggle.IsOn = settings.AutoReviewStartEnabled;
 
         ReviewerPresetComboBox.ItemsSource = Models.LauncherAgentCatalog.AllWithCustomOption;
         ReviewedPresetComboBox.ItemsSource = Models.LauncherAgentCatalog.AllWithCustomOption;
@@ -520,6 +521,16 @@ internal sealed partial class MainWindow : Window
         }
 
         _settingsService.UpdateLiveLogAutoCloseEnabled(LiveLogAutoCloseToggle.IsOn);
+    }
+
+    private void OnAutoReviewStartToggled(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing)
+        {
+            return;
+        }
+
+        _settingsService.UpdateAutoReviewStartEnabled(AutoReviewStartToggle.IsOn);
     }
 
     // プリセット選択（#149）: ComboBox で選んだプリセットの command / arguments を
@@ -1202,35 +1213,7 @@ internal sealed partial class MainWindow : Window
 
     private void OnReviewEventReceived(object? sender, Models.ReviewEvent e)
     {
-        bool enqueued = DispatcherQueue.TryEnqueue(() =>
-        {
-            _reviewEvents.Insert(0, e);
-            const int maxEvents = 20;
-            if (_reviewEvents.Count > maxEvents)
-            {
-                _reviewEvents.RemoveAt(_reviewEvents.Count - 1);
-            }
-
-            if (!_isTrayPopupAvailable)
-            {
-                // ポップアップの生成自体に失敗している（#229）。毎回同じ例外を出すより直接フォールバックする
-                ShowReviewBalloon(e);
-                return;
-            }
-
-            try
-            {
-                _reviewNotificationContent.SetReviewEvent(e);
-                _trayIconService.ShowReviewPopup();
-            }
-            catch (Exception ex)
-            {
-                // ポップアップ表示の失敗でプロセスを落とさない。イベントは一覧に残っているため、
-                // 原因をログへ残したうえでバルーン通知へフォールバックする（#199）。
-                _ = _loggingService.WriteAsync($"[UI] Failed to show review popup: {ex.Message}");
-                ShowReviewBalloon(e);
-            }
-        });
+        bool enqueued = DispatcherQueue.TryEnqueue(() => HandleReviewEvent(e));
 
         if (!enqueued)
         {
@@ -1238,11 +1221,93 @@ internal sealed partial class MainWindow : Window
         }
     }
 
-    private void ShowReviewBalloon(Models.ReviewEvent reviewEvent)
+    // UI スレッド上で受信イベントを処理する。自動起動（#254）の結果によって通知の文言が
+    // 変わるため、起動を待ってから通知する
+    private async void HandleReviewEvent(Models.ReviewEvent reviewEvent)
     {
+        try
+        {
+            _reviewEvents.Insert(0, reviewEvent);
+            const int maxEvents = 20;
+            if (_reviewEvents.Count > maxEvents)
+            {
+                _reviewEvents.RemoveAt(_reviewEvents.Count - 1);
+            }
+
+            bool autoStarted = await TryStartReviewAutomaticallyAsync(reviewEvent);
+            ShowReviewNotification(reviewEvent, autoStarted);
+        }
+        catch (Exception ex)
+        {
+            // async void のため例外はここで確実に捕捉する。イベントは一覧に残っているため、
+            // 原因を記録したうえでバルーン通知へフォールバックする
+            await _loggingService.WriteAsync($"[UI] Failed to handle review event: {ex.Message}");
+            ShowReviewBalloon(reviewEvent, isAutoStarted: false);
+        }
+    }
+
+    /// <summary>
+    /// 「レビュー自動開始」設定（#254）に従って reviewer を自動起動する。
+    /// 起動を見送った場合はその理由を Recent activity へ残す.
+    /// </summary>
+    /// <param name="reviewEvent">受信したレビューイベント.</param>
+    /// <returns>実際に起動した場合は <see langword="true"/>.</returns>
+    private async Task<bool> TryStartReviewAutomaticallyAsync(Models.ReviewEvent reviewEvent)
+    {
+        ReviewAutoStartOutcome outcome = ReviewAutoStartPolicy.Evaluate(
+            _settingsService.Settings.AutoReviewStartEnabled,
+            reviewEvent.Reason,
+            _isReviewStartPending || _launcherService.IsRunning);
+
+        if (ReviewAutoStartPolicy.DescribeSkipReason(outcome) is string skipReason)
+        {
+            await LogAutoStartSkipAsync(reviewEvent, skipReason);
+        }
+
+        if (outcome != ReviewAutoStartOutcome.Start)
+        {
+            return false;
+        }
+
+        await _loggingService.WriteAsync(
+            $"[Auto] {reviewEvent.PrCaption} のレビューを自動起動します（reason: {reviewEvent.Reason}）。");
+        return await ExecuteReviewAsync(reviewEvent, Models.LauncherRole.Reviewer, ReviewStartTrigger.Automatic);
+    }
+
+    private Task LogAutoStartSkipAsync(Models.ReviewEvent reviewEvent, string reason)
+        => _loggingService.WriteAsync($"[Auto] {reviewEvent.PrCaption} のレビューを自動起動しませんでした: {reason}");
+
+    private void ShowReviewNotification(Models.ReviewEvent reviewEvent, bool isAutoStarted)
+    {
+        if (!_isTrayPopupAvailable)
+        {
+            // ポップアップの生成自体に失敗している（#229）。毎回同じ例外を出すより直接フォールバックする
+            ShowReviewBalloon(reviewEvent, isAutoStarted);
+            return;
+        }
+
+        try
+        {
+            _reviewNotificationContent.SetReviewEvent(reviewEvent, isAutoStarted);
+            _trayIconService.ShowReviewPopup();
+        }
+        catch (Exception ex)
+        {
+            // ポップアップ表示の失敗でプロセスを落とさない。イベントは一覧に残っているため、
+            // 原因をログへ残したうえでバルーン通知へフォールバックする（#199）。
+            _ = _loggingService.WriteAsync($"[UI] Failed to show review popup: {ex.Message}");
+            ShowReviewBalloon(reviewEvent, isAutoStarted);
+        }
+    }
+
+    private void ShowReviewBalloon(Models.ReviewEvent reviewEvent, bool isAutoStarted)
+    {
+        string message = isAutoStarted
+            ? $"自動でレビューを開始しました: {reviewEvent.Repository}#{reviewEvent.PrNumber}"
+            : $"{reviewEvent.Reason}: {reviewEvent.Repository}#{reviewEvent.PrNumber}";
         _trayIconService.ShowNotification(
             "レビュー通知",
-            $"{reviewEvent.Reason}: {reviewEvent.Repository}#{reviewEvent.PrNumber}",
+            message,
             H.NotifyIcon.Core.NotificationIcon.Info);
     }
 
@@ -1394,7 +1459,20 @@ internal sealed partial class MainWindow : Window
         }
     }
 
-    private async Task ExecuteReviewAsync(Models.ReviewEvent reviewEvent, Models.LauncherRole role)
+    /// <summary>
+    /// レビューアクションを実行し、ライブログウィンドウを開く.
+    /// </summary>
+    /// <param name="reviewEvent">起動対象のレビューイベント.</param>
+    /// <param name="role">使用する launcher スロット.</param>
+    /// <param name="trigger">
+    /// 起動の起点（#254）。<see cref="ReviewStartTrigger.Automatic"/> は無人で走るため、
+    /// 応答されないダイアログを出さずログへ理由を残して見送る.
+    /// </param>
+    /// <returns>実際に起動した場合は <see langword="true"/>.</returns>
+    private async Task<bool> ExecuteReviewAsync(
+        Models.ReviewEvent reviewEvent,
+        Models.LauncherRole role,
+        ReviewStartTrigger trigger = ReviewStartTrigger.Manual)
     {
         // Auto-Pause 確認ダイアログ等の await 中は IsRunning がまだ false のため、起動ボタンの
         // 連打で本メソッドが再入し ContentDialog の多重表示（WinUI3 では例外）になる。
@@ -1402,11 +1480,18 @@ internal sealed partial class MainWindow : Window
         // 多重表示例外の原因になるため（#147 レビュー指摘）
         if (_isReviewStartPending)
         {
-            return;
+            return false;
         }
 
         if (_launcherService.IsRunning)
         {
+            if (trigger == ReviewStartTrigger.Automatic)
+            {
+                // 判定後にここへ到達するのは、判定と起動の間に別のレビューが始まった場合のみ
+                await LogAutoStartSkipAsync(reviewEvent, ReviewAutoStartPolicy.BusyReasonText);
+                return false;
+            }
+
             ContentDialog dialog = new ContentDialog
             {
                 Title = "レビュー実行エラー",
@@ -1415,7 +1500,7 @@ internal sealed partial class MainWindow : Window
                 XamlRoot = Content.XamlRoot,
             };
             await dialog.ShowAsync(ContentDialogPlacement.Popup);
-            return;
+            return false;
         }
 
         _isReviewStartPending = true;
@@ -1445,10 +1530,19 @@ internal sealed partial class MainWindow : Window
             // 新規起動を拒否する。実行中プロセス・MCP subscription・queue には作用しない
             AutoPauseDecision autoPauseDecision = _autoPauseGate.Evaluate(activeAgentId, startSnapshots, freshnessThreshold);
             UpdateAutoPauseInfoBar();
-            if (autoPauseDecision.Status == AutoPauseStatus.Paused
-                && !await ConfirmAutoPauseOverrideAsync(autoPauseDecision.PausedLimit!))
+            if (autoPauseDecision.Status == AutoPauseStatus.Paused)
             {
-                return;
+                if (!ReviewAutoStartPolicy.AllowsAutoPauseOverridePrompt(trigger))
+                {
+                    string pausedReason = autoPauseDecision.PausedLimit!.BuildReasonText();
+                    await LogAutoStartSkipAsync(reviewEvent, $"Auto-Pause 中のため（{pausedReason}）");
+                    return false;
+                }
+
+                if (!await ConfirmAutoPauseOverrideAsync(autoPauseDecision.PausedLimit!))
+                {
+                    return false;
+                }
             }
 
             AgentExecutionSession session = _launcherService.StartSession(reviewEvent, role, CancellationToken.None);
@@ -1465,9 +1559,18 @@ internal sealed partial class MainWindow : Window
                 }
             };
             window.Activate();
+            return true;
         }
         catch (Exception ex)
         {
+            if (trigger == ReviewStartTrigger.Automatic)
+            {
+                // 無人実行のため応答されないダイアログは出さず、Recent activity に原因を残す
+                await _loggingService.WriteAsync(
+                    $"[Auto] {reviewEvent.PrCaption} のレビュー自動起動が失敗しました: {ex.Message}");
+                return false;
+            }
+
             ContentDialog errDialog = new ContentDialog
             {
                 Title = "エラー",
@@ -1476,6 +1579,7 @@ internal sealed partial class MainWindow : Window
                 XamlRoot = Content.XamlRoot,
             };
             await errDialog.ShowAsync(ContentDialogPlacement.Popup);
+            return false;
         }
         finally
         {
