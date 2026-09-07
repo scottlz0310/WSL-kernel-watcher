@@ -1014,6 +1014,25 @@ public class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Settings_ShouldDefaultAutoReviewStartToDisabled()
+    {
+        new AppSettings().AutoReviewStartEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdateAutoReviewStartEnabled_ShouldPersistValue()
+    {
+        // Act
+        _settingsService.UpdateAutoReviewStartEnabled(true);
+
+        // Assert
+        _settingsService.Settings.AutoReviewStartEnabled.Should().BeTrue();
+
+        var reloaded = new SettingsService(_settingsDirectory, pnpmBinDir: string.Empty);
+        reloaded.Settings.AutoReviewStartEnabled.Should().BeTrue();
+    }
+
+    [Fact]
     public void Settings_ShouldDefaultRateLimitFreshnessThresholdToFifteenMinutes()
     {
         new AppSettings().RateLimitFreshnessThresholdMinutes.Should().Be(15);

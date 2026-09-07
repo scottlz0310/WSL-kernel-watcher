@@ -288,6 +288,12 @@ internal sealed class SettingsService
         SaveSettings();
     }
 
+    public void UpdateAutoReviewStartEnabled(bool enabled)
+    {
+        _settings.AutoReviewStartEnabled = enabled;
+        SaveSettings();
+    }
+
     /// <summary>
     /// 指定した launcher スロットの rateLimitAgentId を解決する（#149）。
     /// レートリミット取得手段が無いプリセット（copilot 等）、および command がどのプリセットとも
@@ -496,6 +502,10 @@ internal sealed class AppSettings
     // ライブログウィンドウ（#144）: 成功終了時に短い猶予の後で自動クローズするか。
     // 失敗・キャンセル・タイムアウト時は設定に関わらず診断のため保持する
     public bool LiveLogAutoCloseEnabled { get; set; } = true;
+
+    // review event 受信時に reviewer スロットを自動起動するか（#254）。無人でエージェントを
+    // 起動するため既定は off とし、on でも Auto-Pause（#147）と同時実行抑止を必ず経由する
+    public bool AutoReviewStartEnabled { get; set; }
 
     // ローカルの statusline スクリプトがレートリミット状態を書き出すエージェント ID
     // （RateLimitAgentCatalog 参照）のうち、監視対象として選択されているもの
