@@ -107,6 +107,12 @@ jobs:
       - name: Run dotnet format
         run: dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes
 
+      # *.xaml.cs はカバレッジ計測の対象外のため、ここへロジックを書くとテスト無しで
+      # ゲートを通せてしまう。肥大化を機械的に検知する（#263）
+      - name: Check code-behind size
+        shell: pwsh
+        run: ./scripts/check-code-behind-size.ps1
+
   security-scan:
     runs-on: windows-2025
     permissions:

@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 internal static class ReviewNotificationPolicy
 {

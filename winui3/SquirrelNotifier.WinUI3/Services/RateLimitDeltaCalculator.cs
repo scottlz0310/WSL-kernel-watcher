@@ -4,6 +4,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using SquirrelNotifier.WinUI3.Helpers;
 using SquirrelNotifier.WinUI3.Models;
 
 namespace SquirrelNotifier.WinUI3.Services;

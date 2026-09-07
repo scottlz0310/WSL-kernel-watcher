@@ -3,9 +3,9 @@
 // </copyright>
 
 using FluentAssertions;
-using SquirrelNotifier.WinUI3.Services;
+using SquirrelNotifier.WinUI3.Helpers;
 
-namespace SquirrelNotifier.WinUI3.Tests.Services;
+namespace SquirrelNotifier.WinUI3.Tests.Helpers;
 
 public sealed class ReviewNotificationPolicyTests
 {

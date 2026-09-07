@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace SquirrelNotifier.WinUI3.Services;
+namespace SquirrelNotifier.WinUI3.Helpers;
 
 /// <summary>レビュー起動が人の操作によるものか、queue event による自動起動かの区別（#254）.</summary>
 internal enum ReviewStartTrigger
