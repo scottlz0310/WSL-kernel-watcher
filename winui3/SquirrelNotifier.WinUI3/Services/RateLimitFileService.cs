@@ -7,7 +7,7 @@ namespace SquirrelNotifier.WinUI3.Services;
 /// <summary>
 /// 各 CLI エージェントの statusline フックが書き出すレートリミット状態のローカル
 /// JSON ファイル（<c>&lt;settingsDirectory&gt;/ratelimit-status/&lt;agentId&gt;.json</c>）を読み取る.
-/// ファイルの中身は既存の <see cref="RateLimitStatusParser"/> が扱うスキーマ
+/// ファイルの中身は既存の <see cref="Helpers.RateLimitStatusParser"/> が扱うスキーマ
 /// （<c>{"limits":[{"id","label","resetAt"}]}</c>）と同一であることを前提とする（#139）.
 /// </summary>
 internal sealed class RateLimitFileService
