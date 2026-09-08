@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Settings の Gateway URL 入力と操作ボタンを2段に分け、「ログイン」が右端に切れる問題を修正した（#274）。ボタン段はラベル列も含めた幅を使う
+
+### Added
+- Settings・レートリミット・レビューイベント・ログの高さを仕切りで調整できるようにした（#274）。Settings は折りたたみ時に空白を残さず、他の3領域はウィンドウの高さに応じて伸縮する。狭い画面では全体をスクロールできる。調整位置はアプリ起動中のみ保持する
+
 ### Changed
 - コードの置き場所を `AGENTS.md` に明文化し、`*.xaml.cs` の肥大化を検知する行数チェックを追加した（#263、epic #262）。`MainWindow.xaml.cs` が 2,058 行まで肥大化し、判断を持つコードが約 800 行、カバレッジ計測の対象外（`ExcludeByFile` / `codecov.yml` の `ignore`）に置かれていた。codecov の `ignore` は patch ゲートにも効くため、`*.xaml.cs` だけを触る PR は patch coverage の分母が空になり 80% ゲートを素通りする。「ロジックを code-behind に書けばテストを書かずに済む」という逆向きのインセンティブが働いていた。置き場所の基準を「状態と依存を持つか」で定義し、`Helpers/` は状態を持たない型（DI されず入力と出力だけでテストできる）、`Services/` は状態を持つか DI 対象の型とした。`*.xaml.cs` には判断・状態・I/O・文字列の組み立て規則を置かない。除外設定自体は維持する（WinUI 3 の `Window` / `UserControl` はプレーンな xUnit プロセスで instantiate できず、外せば書けないテストのために CI が落ち続けるため）。除外を外すのではなく除外領域を薄く保つ方針
 - この基準に従い、`Services/` にあった状態を持たない 8 型を `Helpers/` へ移動した（#263）。`ReviewNotificationPolicy` / `ReviewAutoStartPolicy` / `RateLimitFreshnessPolicy` / `ProgressEventParser` / `RateLimitStatusParser` / `ClaudeStreamJsonEventExtractor` / `ReviewEventParser` / `ReviewEventParseResult` とそれぞれのテスト。既存の `Helpers/` 21 件はすべて基準を満たしているため移動していない。型の実装は変更していない

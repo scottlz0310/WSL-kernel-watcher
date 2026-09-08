@@ -209,6 +209,12 @@ internal sealed partial class MainWindow : Window
         }
     }
 
+    private void OnPaneViewportSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        PaneGrid.Height = e.NewSize.Height;
+        SettingsScrollViewer.MaxHeight = MainWindowLayout.GetSettingsMaxHeight(e.NewSize.Height);
+    }
+
     private void OnGoToSettingsClick(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         SettingsExpander.IsExpanded = true;
