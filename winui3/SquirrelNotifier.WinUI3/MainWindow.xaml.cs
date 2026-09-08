@@ -43,6 +43,7 @@ internal sealed partial class MainWindow : Window
     private readonly RateLimitSnapshotService _rateLimitSnapshotService;
     private readonly RateLimitSnapshotResolver _rateLimitSnapshotResolver;
     private readonly AutoPauseGate _autoPauseGate = new();
+    private readonly ReviewStartCoordinator _reviewStartCoordinator;
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
     private ScrollViewer? _logListScrollViewer;
@@ -51,7 +52,6 @@ internal sealed partial class MainWindow : Window
     private bool _isAutoStartToggling;
     private bool _isSyncingLauncherPresetSelection;
     private bool _isApplyingLauncherPreset;
-    private bool _isReviewStartPending;
     private bool _isLoginPending;
 
     // トレイポップアップのコンテンツ。XAML ではなくコードで生成し TaskbarIcon へ後から代入する（#229）
@@ -122,6 +122,12 @@ internal sealed partial class MainWindow : Window
         _rateLimitFileService = rateLimitFileService;
         _rateLimitSnapshotService = new RateLimitSnapshotService(rateLimitFileService);
         _rateLimitSnapshotResolver = new RateLimitSnapshotResolver(_rateLimitSnapshotService);
+        _reviewStartCoordinator = new ReviewStartCoordinator(
+            _launcherService,
+            _settingsService,
+            _rateLimitSnapshotService,
+            _autoPauseGate,
+            _loggingService);
         _service.StatusTextChanged += OnStatusTextChanged;
         _service.StateChanged += OnStateChanged;
         _loggingService.LogAppended += OnLogAppended;
@@ -1234,8 +1240,9 @@ internal sealed partial class MainWindow : Window
                 _reviewEvents.RemoveAt(_reviewEvents.Count - 1);
             }
 
-            bool autoStarted = await TryStartReviewAutomaticallyAsync(reviewEvent);
-            ShowReviewNotification(reviewEvent, autoStarted);
+            ReviewStartResult result = await _reviewStartCoordinator.TryStartAutomaticallyAsync(reviewEvent);
+            ShowAgentExecutionWindow(result);
+            ShowReviewNotification(reviewEvent, result.IsStarted);
         }
         catch (Exception ex)
         {
@@ -1245,37 +1252,6 @@ internal sealed partial class MainWindow : Window
             ShowReviewBalloon(reviewEvent, isAutoStarted: false);
         }
     }
-
-    /// <summary>
-    /// 「レビュー自動開始」設定（#254）に従って reviewer を自動起動する。
-    /// 起動を見送った場合はその理由を Recent activity へ残す.
-    /// </summary>
-    /// <param name="reviewEvent">受信したレビューイベント.</param>
-    /// <returns>実際に起動した場合は <see langword="true"/>.</returns>
-    private async Task<bool> TryStartReviewAutomaticallyAsync(Models.ReviewEvent reviewEvent)
-    {
-        ReviewAutoStartOutcome outcome = ReviewAutoStartPolicy.Evaluate(
-            _settingsService.Settings.AutoReviewStartEnabled,
-            reviewEvent.Reason,
-            _isReviewStartPending || _launcherService.IsRunning);
-
-        if (ReviewAutoStartPolicy.DescribeSkipReason(outcome) is string skipReason)
-        {
-            await LogAutoStartSkipAsync(reviewEvent, skipReason);
-        }
-
-        if (outcome != ReviewAutoStartOutcome.Start)
-        {
-            return false;
-        }
-
-        await _loggingService.WriteAsync(
-            $"[Auto] {reviewEvent.PrCaption} のレビューを自動起動します（reason: {reviewEvent.Reason}）。");
-        return await ExecuteReviewAsync(reviewEvent, Models.LauncherRole.Reviewer, ReviewStartTrigger.Automatic);
-    }
-
-    private Task LogAutoStartSkipAsync(Models.ReviewEvent reviewEvent, string reason)
-        => _loggingService.WriteAsync($"[Auto] {reviewEvent.PrCaption} のレビューを自動起動しませんでした: {reason}");
 
     private void ShowReviewNotification(Models.ReviewEvent reviewEvent, bool isAutoStarted)
     {
@@ -1460,132 +1436,83 @@ internal sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// レビューアクションを実行し、ライブログウィンドウを開く.
+    /// 手動操作によるレビューを起動し、ライブログウィンドウを開く。
+    /// 起動可否の判断は <see cref="ReviewStartCoordinator"/> が持ち、ここは結果の提示だけを行う（#264）.
     /// </summary>
     /// <param name="reviewEvent">起動対象のレビューイベント.</param>
     /// <param name="role">使用する launcher スロット.</param>
-    /// <param name="trigger">
-    /// 起動の起点（#254）。<see cref="ReviewStartTrigger.Automatic"/> は無人で走るため、
-    /// 応答されないダイアログを出さずログへ理由を残して見送る.
-    /// </param>
     /// <returns>実際に起動した場合は <see langword="true"/>.</returns>
-    private async Task<bool> ExecuteReviewAsync(
-        Models.ReviewEvent reviewEvent,
-        Models.LauncherRole role,
-        ReviewStartTrigger trigger = ReviewStartTrigger.Manual)
+    private async Task<bool> ExecuteReviewAsync(Models.ReviewEvent reviewEvent, Models.LauncherRole role)
     {
-        // Auto-Pause 確認ダイアログ等の await 中は IsRunning がまだ false のため、起動ボタンの
-        // 連打で本メソッドが再入し ContentDialog の多重表示（WinUI3 では例外）になる。
-        // 再入はダイアログを出さず黙って無視する — ここでダイアログを出すこと自体が
-        // 多重表示例外の原因になるため（#147 レビュー指摘）
-        if (_isReviewStartPending)
-        {
-            return false;
-        }
+        ReviewStartResult result = await _reviewStartCoordinator.StartAsync(
+            reviewEvent,
+            role,
+            ReviewStartTrigger.Manual,
+            ConfirmAutoPauseOverrideAsync,
+            CancellationToken.None);
 
-        if (_launcherService.IsRunning)
+        switch (result.Status)
         {
-            if (trigger == ReviewStartTrigger.Automatic)
-            {
-                // 判定後にここへ到達するのは、判定と起動の間に別のレビューが始まった場合のみ
-                await LogAutoStartSkipAsync(reviewEvent, ReviewAutoStartPolicy.BusyReasonText);
+            case ReviewStartStatus.Started:
+                ShowAgentExecutionWindow(result);
+                return true;
+            case ReviewStartStatus.SkippedBusy:
+                await ShowReviewStartErrorDialogAsync(
+                    "レビュー実行エラー",
+                    "別のレビューアクションが既に実行中です。");
                 return false;
-            }
-
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = "レビュー実行エラー",
-                Content = "別のレビューアクションが既に実行中です。",
-                CloseButtonText = "閉じる",
-                XamlRoot = Content.XamlRoot,
-            };
-            await dialog.ShowAsync(ContentDialogPlacement.Popup);
-            return false;
-        }
-
-        _isReviewStartPending = true;
-        try
-        {
-            string roleLabel = role == Models.LauncherRole.Reviewer ? "レビューする" : "レビューに対応";
-            var viewModel = new ViewModels.AgentExecutionViewModel(
-                $"{reviewEvent.Repository}#{reviewEvent.PrNumber}（{roleLabel}）",
-                _settingsService.Settings.LiveLogAutoCloseEnabled,
-                SecretMasker.CreateDefault(),
-                _settingsService.ResolveLauncherProgressEventSupport(role));
-
-            AppSettings settings = _settingsService.Settings;
-            string? activeAgentId = _settingsService.ResolveLauncherRateLimitAgentId(role);
-            TimeSpan freshnessThreshold = TimeSpan.FromMinutes(settings.RateLimitFreshnessThresholdMinutes);
-            ViewModels.RateLimitGaugeViewModel rateLimitGaugeViewModel = new(freshnessThreshold);
-            RateLimitSessionMonitor rateLimitSessionMonitor = new(
-                _rateLimitSnapshotService,
-                new RateLimitDeltaCalculator(),
-                settings.RateLimitMonitoredAgentIds,
-                activeAgentId,
-                freshnessThreshold);
-            IReadOnlyList<Models.RateLimitSnapshot> startSnapshots = await rateLimitSessionMonitor.CaptureStartAsync(CancellationToken.None);
-            rateLimitGaugeViewModel.Update(settings.RateLimitMonitoredAgentIds, startSnapshots, activeAgentId, []);
-
-            // Auto-Pause gate（#147）: 起動する launcher スロットの agent が危険水域なら
-            // 新規起動を拒否する。実行中プロセス・MCP subscription・queue には作用しない
-            AutoPauseDecision autoPauseDecision = _autoPauseGate.Evaluate(activeAgentId, startSnapshots, freshnessThreshold);
-            UpdateAutoPauseInfoBar();
-            if (autoPauseDecision.Status == AutoPauseStatus.Paused)
-            {
-                if (!ReviewAutoStartPolicy.AllowsAutoPauseOverridePrompt(trigger))
-                {
-                    string pausedReason = autoPauseDecision.PausedLimit!.BuildReasonText();
-                    await LogAutoStartSkipAsync(reviewEvent, $"Auto-Pause 中のため（{pausedReason}）");
-                    return false;
-                }
-
-                if (!await ConfirmAutoPauseOverrideAsync(autoPauseDecision.PausedLimit!))
-                {
-                    return false;
-                }
-            }
-
-            AgentExecutionSession session = _launcherService.StartSession(reviewEvent, role, CancellationToken.None);
-
-            // 実行の進捗とログはライブログウィンドウ（#144）が逐次表示する。lifecycle
-            // （成功時自動クローズ・失敗時保持・クローズ時キャンセル）はウィンドウ側の責務
-            var window = new AgentExecutionWindow(session, viewModel, rateLimitGaugeViewModel, rateLimitSessionMonitor, _autoPauseGate, _launcherService.Cancel);
-            _agentExecutionWindow = window;
-            window.Closed += (_, _) =>
-            {
-                if (ReferenceEquals(_agentExecutionWindow, window))
-                {
-                    _agentExecutionWindow = null;
-                }
-            };
-            window.Activate();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            if (trigger == ReviewStartTrigger.Automatic)
-            {
-                // 無人実行のため応答されないダイアログは出さず、Recent activity に原因を残す
-                await _loggingService.WriteAsync(
-                    $"[Auto] {reviewEvent.PrCaption} のレビュー自動起動が失敗しました: {ex.Message}");
+            case ReviewStartStatus.Failed:
+                await ShowReviewStartErrorDialogAsync(
+                    "エラー",
+                    $"レビューの実行中に予期しないエラーが発生しました:\n{result.FailureMessage}");
                 return false;
-            }
+            default:
+                // 再入・Auto-Pause 見送り・override のキャンセルはいずれも通知不要。
+                // 特に再入でダイアログを出すこと自体が多重表示例外の原因になる（#147 レビュー指摘）
+                return false;
+        }
+    }
 
-            ContentDialog errDialog = new ContentDialog
-            {
-                Title = "エラー",
-                Content = $"レビューの実行中に予期しないエラーが発生しました:\n{ex.Message}",
-                CloseButtonText = "閉じる",
-                XamlRoot = Content.XamlRoot,
-            };
-            await errDialog.ShowAsync(ContentDialogPlacement.Popup);
-            return false;
-        }
-        finally
+    private async Task ShowReviewStartErrorDialogAsync(string title, string message)
+    {
+        ContentDialog dialog = new ContentDialog
         {
-            // StartSession 成功後の同時実行抑止は _launcherService.IsRunning が担う
-            _isReviewStartPending = false;
+            Title = title,
+            Content = message,
+            CloseButtonText = "閉じる",
+            XamlRoot = Content.XamlRoot,
+        };
+        await dialog.ShowAsync(ContentDialogPlacement.Popup);
+    }
+
+    /// <summary>
+    /// 起動したセッションのライブログウィンドウ（#144）を開く。lifecycle
+    /// （成功時自動クローズ・失敗時保持・クローズ時キャンセル）はウィンドウ側の責務.
+    /// </summary>
+    /// <param name="result">レビュー起動の結果。起動していない場合は何もしない.</param>
+    private void ShowAgentExecutionWindow(ReviewStartResult result)
+    {
+        if (result.Launch is not ReviewStartLaunch launch)
+        {
+            return;
         }
+
+        var window = new AgentExecutionWindow(
+            launch.Session,
+            launch.ViewModel,
+            launch.RateLimitGaugeViewModel,
+            launch.RateLimitSessionMonitor,
+            _autoPauseGate,
+            _launcherService.Cancel);
+        _agentExecutionWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_agentExecutionWindow, window))
+            {
+                _agentExecutionWindow = null;
+            }
+        };
+        window.Activate();
     }
 
     // 誤操作で常用されないよう既定ボタンはキャンセル側にする（#147 手動 override の設計論点）
@@ -1608,47 +1535,26 @@ internal sealed partial class MainWindow : Window
 
     private void UpdateAutoPauseInfoBar()
     {
-        IReadOnlyList<AutoPausedLimit> pausedLimits = _autoPauseGate.PausedLimits;
-        if (pausedLimits.Count == 0)
+        string? message = AutoPauseInfoBarFormatter.BuildPausedMessage(_autoPauseGate.PausedLimits);
+        if (message is not null)
         {
-            AutoPauseInfoBar.IsOpen = false;
-            return;
+            AutoPauseInfoBar.Message = message;
         }
 
-        AutoPauseInfoBar.Message =
-            string.Join(Environment.NewLine, pausedLimits.Select(paused => paused.BuildReasonText()))
-            + Environment.NewLine
-            + "fresh なレートリミット情報で使用率 95% 未満を確認すると自動解除されます。";
-        AutoPauseInfoBar.IsOpen = true;
+        AutoPauseInfoBar.IsOpen = message is not null;
     }
 
-    // rateLimitAgentId を解決できないスロットは Auto-Pause gate が NotApplicable を返し、危険水域でも
-    // 新規起動を止めない。以前はこれが UI に一切出ず、保護が外れたことに気づけなかった（#233）.
     private void UpdateAutoPauseNotApplicableInfoBar()
     {
-        List<string> slotNames = [];
-        if (_settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewer) is null)
+        string? message = AutoPauseInfoBarFormatter.BuildNotApplicableMessage(
+            _settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewer),
+            _settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewed));
+        if (message is not null)
         {
-            slotNames.Add("reviewer");
+            AutoPauseNotApplicableInfoBar.Message = message;
         }
 
-        if (_settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewed) is null)
-        {
-            slotNames.Add("reviewed");
-        }
-
-        if (slotNames.Count == 0)
-        {
-            AutoPauseNotApplicableInfoBar.IsOpen = false;
-            return;
-        }
-
-        AutoPauseNotApplicableInfoBar.Message =
-            $"{string.Join("、", slotNames)} ランチャーは Auto-Pause の対象外です。"
-            + "レートリミットが危険水域でも新規起動は停止されません。"
-            + "コマンドがプリセット（claude / codex / agy）のいずれとも一致しないか、"
-            + "レートリミットを取得できないエージェント（copilot）が設定されています。";
-        AutoPauseNotApplicableInfoBar.IsOpen = true;
+        AutoPauseNotApplicableInfoBar.IsOpen = message is not null;
     }
 
     private async void OnEnqueueReviewClick(object sender, RoutedEventArgs e)
