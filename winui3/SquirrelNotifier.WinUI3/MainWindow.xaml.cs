@@ -44,6 +44,7 @@ internal sealed partial class MainWindow : Window
     private readonly RateLimitSnapshotResolver _rateLimitSnapshotResolver;
     private readonly AutoPauseGate _autoPauseGate = new();
     private readonly ReviewStartCoordinator _reviewStartCoordinator;
+    private readonly GatewayLoginCoordinator _gatewayLoginCoordinator = new();
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
     private ScrollViewer? _logListScrollViewer;
@@ -52,7 +53,6 @@ internal sealed partial class MainWindow : Window
     private bool _isAutoStartToggling;
     private bool _isSyncingLauncherPresetSelection;
     private bool _isApplyingLauncherPreset;
-    private bool _isLoginPending;
 
     // トレイポップアップのコンテンツ。XAML ではなくコードで生成し TaskbarIcon へ後から代入する（#229）
     private readonly ReviewNotificationPopup _reviewNotificationContent;
@@ -1642,21 +1642,17 @@ internal sealed partial class MainWindow : Window
     // mcp-resource-subscriber が担当し、ここでは起動・進行表示・ブラウザ導線・再購読のみ行う。
     private async Task StartGatewayLoginAsync()
     {
-        if (_isLoginPending)
+        GatewayLoginStartDecision decision = _gatewayLoginCoordinator.TryBeginLogin(GatewayUrlBox.Text);
+        if (!decision.CanStart)
         {
+            if (decision.ErrorTitle is string errorTitle)
+            {
+                await ShowAlertDialogAsync(errorTitle, decision.ErrorMessage!);
+            }
+
             return;
         }
 
-        string gatewayUrl = GatewayUrlBox.Text;
-        if (string.IsNullOrWhiteSpace(gatewayUrl)
-            || !Uri.TryCreate(gatewayUrl, UriKind.Absolute, out Uri? uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            await ShowAlertDialogAsync("設定エラー", "Gateway URL が正しくありません。先に Gateway URL を http(s):// 形式で設定してください。");
-            return;
-        }
-
-        _isLoginPending = true;
         GatewayLoginButton.IsEnabled = false;
 
         var loginService = new McpLoginService(_settingsService, _loggingService);
@@ -1681,20 +1677,20 @@ internal sealed partial class MainWindow : Window
         panel.Children.Add(codeValue);
         panel.Children.Add(codeCopyButton);
 
-        DeviceVerificationInfo? latestInfo = null;
+        DeviceVerificationView? latestView = null;
 
         urlCopyButton.Click += (_, _) =>
         {
-            if (latestInfo != null)
+            if (latestView != null)
             {
-                CopyToClipboard(latestInfo.DisplayUri);
+                CopyToClipboard(latestView.Url);
             }
         };
         codeCopyButton.Click += (_, _) =>
         {
-            if (latestInfo != null)
+            if (latestView?.UserCode is string userCode)
             {
-                CopyToClipboard(latestInfo.UserCode);
+                CopyToClipboard(userCode);
             }
         };
 
@@ -1705,16 +1701,17 @@ internal sealed partial class MainWindow : Window
 
         void OnVerification(object? sender, DeviceVerificationInfo info)
         {
+            DeviceVerificationView view = GatewayLoginCoordinator.DescribeVerification(info);
             _ = DispatcherQueue.TryEnqueue(() =>
             {
-                latestInfo = info;
-                urlValue.Text = info.DisplayUri;
+                latestView = view;
+                urlValue.Text = view.Url;
                 urlLabel.Visibility = Visibility.Visible;
                 urlValue.Visibility = Visibility.Visible;
                 urlCopyButton.Visibility = Visibility.Visible;
-                if (!string.IsNullOrEmpty(info.UserCode))
+                if (view.UserCode is string userCode)
                 {
-                    codeValue.Text = info.UserCode;
+                    codeValue.Text = userCode;
                     codeLabel.Visibility = Visibility.Visible;
                     codeValue.Visibility = Visibility.Visible;
                     codeCopyButton.Visibility = Visibility.Visible;
@@ -1788,42 +1785,28 @@ internal sealed partial class MainWindow : Window
         {
             loginService.StatusChanged -= OnStatus;
             loginService.VerificationReceived -= OnVerification;
-            _isLoginPending = false;
+            _gatewayLoginCoordinator.EndLogin();
             GatewayLoginButton.IsEnabled = true;
         }
     }
 
     private async Task HandleLoginResultAsync(Models.McpLoginResult result)
     {
-        switch (result.Outcome)
+        GatewayLoginPresentation presentation = GatewayLoginCoordinator.DescribeResult(result, _service.State);
+
+        if (presentation.CloseAuthRequiredInfoBar)
         {
-            case Models.McpLoginOutcome.Succeeded:
-                AuthRequiredInfoBar.IsOpen = false;
+            AuthRequiredInfoBar.IsOpen = false;
+        }
 
-                // 認証成功後、購読が停止中または Error なら再購読を開始し、手動レビュー開始を
-                // 再試行できる状態へ戻す（#183 AC）。
-                string message = "mcp-gateway への認証に成功しました。";
-                if (_service.State is SubscriptionState.Stopped or SubscriptionState.Error)
-                {
-                    _service.Start();
-                    message += "\n購読を再開しました。";
-                }
+        if (presentation.RestartSubscription)
+        {
+            _service.Start();
+        }
 
-                await ShowAlertDialogAsync("ログイン成功", message);
-                break;
-
-            case Models.McpLoginOutcome.Cancelled:
-                // ユーザー操作による中断のため、追加の通知は出さない。
-                break;
-
-            case Models.McpLoginOutcome.TimedOut:
-                await ShowAlertDialogAsync("ログインがタイムアウトしました", result.ErrorMessage ?? "認証が時間内に完了しませんでした。");
-                break;
-
-            case Models.McpLoginOutcome.Failed:
-            default:
-                await ShowAlertDialogAsync("ログインに失敗しました", result.ErrorMessage ?? "mcp-gateway へのログインに失敗しました。");
-                break;
+        if (presentation.DialogTitle is string title)
+        {
+            await ShowAlertDialogAsync(title, presentation.DialogMessage!);
         }
     }
 
