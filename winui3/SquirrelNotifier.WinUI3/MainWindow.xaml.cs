@@ -45,13 +45,13 @@ internal sealed partial class MainWindow : Window
     private readonly RateLimitRefreshCoordinator _rateLimitRefreshCoordinator;
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly LauncherPresetCoordinator _launcherPresetCoordinator;
+    private readonly AutoStartCoordinator _autoStartCoordinator;
     private readonly GatewayLoginCoordinator _gatewayLoginCoordinator = new();
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
     private ScrollViewer? _logListScrollViewer;
     private bool _isCheckingForUpdates;
     private bool _hasShownErrorBalloon;
-    private bool _isAutoStartToggling;
 
     // トレイポップアップのコンテンツ。XAML ではなくコードで生成し TaskbarIcon へ後から代入する（#229）
     private readonly ReviewNotificationPopup _reviewNotificationContent;
@@ -128,6 +128,7 @@ internal sealed partial class MainWindow : Window
             _rateLimitReminderService);
         _settingsCoordinator = new SettingsCoordinator(_settingsService);
         _launcherPresetCoordinator = new LauncherPresetCoordinator();
+        _autoStartCoordinator = new AutoStartCoordinator(_taskSchedulerService);
         _reviewStartCoordinator = new ReviewStartCoordinator(
             _launcherService,
             _settingsService,
@@ -1559,121 +1560,75 @@ internal sealed partial class MainWindow : Window
 
     private async void OnAutoStartToggled(object sender, RoutedEventArgs e)
     {
-        if (_isAutoStartToggling)
+        if (_autoStartCoordinator.IsToggleSuppressed)
         {
             return;
         }
 
-        _isAutoStartToggling = true;
-        try
+        AutoStartOperationResult result = await _autoStartCoordinator.ToggleAsync(
+            AutoStartToggle.IsOn,
+            ShowAutoStartConfirmationAsync);
+        if (result.ToggleIsOn is bool toggleIsOn)
         {
-            if (AutoStartToggle.IsOn)
-            {
-                string exePath = TaskSchedulerService.GetExePath();
-                ContentDialog confirmDialog = new ContentDialog
-                {
-                    Title = "自動起動を設定します",
-                    Content = $"以下の内容でタスクスケジューラへ登録します\n\n　タスク名: Squirrel Notifier\n　実行ファイル: {exePath}\n　引数: --tray\n　トリガー: ログオン時（現在のユーザー）",
-                    PrimaryButtonText = "はい",
-                    CloseButtonText = "いいえ",
-                    XamlRoot = Content.XamlRoot,
-                };
-                ContentDialogResult confirmed = await confirmDialog.ShowAsync(ContentDialogPlacement.Popup);
-                if (confirmed != ContentDialogResult.Primary)
-                {
-                    AutoStartToggle.IsOn = false;
-                    return;
-                }
-
-                await _taskSchedulerService.RegisterAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                ContentDialog confirmDialog = new ContentDialog
-                {
-                    Title = "自動起動を解除します",
-                    Content = "自動起動タスクを削除します。よろしいですか？",
-                    PrimaryButtonText = "はい",
-                    CloseButtonText = "いいえ",
-                    XamlRoot = Content.XamlRoot,
-                };
-                ContentDialogResult confirmed = await confirmDialog.ShowAsync(ContentDialogPlacement.Popup);
-                if (confirmed != ContentDialogResult.Primary)
-                {
-                    AutoStartToggle.IsOn = true;
-                    return;
-                }
-
-                await _taskSchedulerService.UnregisterAsync().ConfigureAwait(true);
-            }
-        }
-        catch (Exception ex)
-        {
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = "自動起動の設定に失敗しました",
-                Content = ex.Message,
-                CloseButtonText = "閉じる",
-                XamlRoot = Content.XamlRoot,
-            };
-            await dialog.ShowAsync(ContentDialogPlacement.Popup);
-        }
-        finally
-        {
-            _isAutoStartToggling = false;
+            _autoStartCoordinator.ApplyUiState(() => AutoStartToggle.IsOn = toggleIsOn);
         }
 
-        await RefreshAutoStartStatusAsync().ConfigureAwait(true);
+        if (result.ErrorTitle is string errorTitle)
+        {
+            await ShowAlertDialogAsync(errorTitle, result.ErrorMessage!);
+        }
+
+        if (result.ShouldRefresh)
+        {
+            await RefreshAutoStartStatusAsync();
+        }
+    }
+
+    private async Task<bool> ShowAutoStartConfirmationAsync(AutoStartConfirmation confirmation)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = confirmation.Title,
+            Content = confirmation.Message,
+            PrimaryButtonText = "はい",
+            CloseButtonText = "いいえ",
+            XamlRoot = Content.XamlRoot,
+        };
+        ContentDialogResult result = await dialog.ShowAsync(ContentDialogPlacement.Popup);
+        return result == ContentDialogResult.Primary;
     }
 
     private async void OnRepairAutoStartClick(object sender, RoutedEventArgs e)
     {
-        try
+        if (_autoStartCoordinator.IsToggleSuppressed)
         {
-            await _taskSchedulerService.RepairAsync().ConfigureAwait(true);
-        }
-        catch (Exception ex)
-        {
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = "タスク修復に失敗しました",
-                Content = ex.Message,
-                CloseButtonText = "閉じる",
-                XamlRoot = Content.XamlRoot,
-            };
-            await dialog.ShowAsync(ContentDialogPlacement.Popup);
+            return;
         }
 
-        await RefreshAutoStartStatusAsync().ConfigureAwait(true);
+        AutoStartOperationResult result = await _autoStartCoordinator.RepairAsync();
+        if (result.ErrorTitle is string errorTitle)
+        {
+            await ShowAlertDialogAsync(errorTitle, result.ErrorMessage!);
+        }
+
+        if (result.ShouldRefresh)
+        {
+            await RefreshAutoStartStatusAsync();
+        }
     }
 
-    private async Task RefreshAutoStartStatusAsync()
+    private Task RefreshAutoStartStatusAsync()
+        => _autoStartCoordinator.RefreshStatusAsync(ApplyAutoStartStatus);
+
+    private void ApplyAutoStartStatus(AutoStartStatusPresentation presentation)
     {
-        TaskRegistrationStatus status = await _taskSchedulerService.GetStatusAsync().ConfigureAwait(true);
-        _ = DispatcherQueue.TryEnqueue(() =>
+        if (presentation.ToggleIsOn is bool toggleIsOn)
         {
-            _isAutoStartToggling = true;
-            try
-            {
-                if (status == TaskRegistrationStatus.Registered)
-                {
-                    AutoStartToggle.IsOn = true;
-                    AutoStartStatusText.Text = "登録済み";
-                    RepairAutoStartButton.IsEnabled = true;
-                    OnboardingInfoBar.IsOpen = false;
-                }
-                else
-                {
-                    AutoStartToggle.IsOn = false;
-                    AutoStartStatusText.Text = "未登録";
-                    RepairAutoStartButton.IsEnabled = false;
-                    OnboardingInfoBar.IsOpen = true;
-                }
-            }
-            finally
-            {
-                _isAutoStartToggling = false;
-            }
-        });
+            AutoStartToggle.IsOn = toggleIsOn;
+        }
+
+        AutoStartStatusText.Text = presentation.StatusText;
+        RepairAutoStartButton.IsEnabled = presentation.IsRepairEnabled;
+        OnboardingInfoBar.IsOpen = presentation.IsOnboardingOpen;
     }
 }

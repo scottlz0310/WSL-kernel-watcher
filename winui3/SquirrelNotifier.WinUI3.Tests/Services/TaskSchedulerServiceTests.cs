@@ -26,10 +26,14 @@ public class TaskSchedulerServiceTests
     }
 
     [Theory]
-    [InlineData(0, true)]
-    [InlineData(1, false)]
-    [InlineData(2, false)]
-    public async Task GetStatusAsync_ReturnsStatusBasedOnExitCode(int exitCode, bool expectRegistered)
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    [InlineData(2, 2)]
+    [InlineData(3, 3)]
+    [InlineData(99, 3)]
+    public async Task GetStatusAsync_ReturnsStatusBasedOnExitCode(
+        int exitCode,
+        int expectedStatus)
     {
         // Arrange
         Mock<IProcessInstance> mockProcess = CreateMockProcess(exitCode);
@@ -42,18 +46,11 @@ public class TaskSchedulerServiceTests
         TaskRegistrationStatus status = await service.GetStatusAsync();
 
         // Assert
-        if (expectRegistered)
-        {
-            status.Should().Be(TaskRegistrationStatus.Registered);
-        }
-        else
-        {
-            status.Should().Be(TaskRegistrationStatus.NotRegistered);
-        }
+        status.Should().Be((TaskRegistrationStatus)expectedStatus);
     }
 
     [Fact]
-    public async Task GetStatusAsync_WhenStartThrows_ReturnsNotRegistered()
+    public async Task GetStatusAsync_WhenStartThrows_ReturnsCheckFailed()
     {
         // Arrange
         var mockRunner = new Mock<IProcessRunner>();
@@ -65,7 +62,33 @@ public class TaskSchedulerServiceTests
         TaskRegistrationStatus status = await service.GetStatusAsync();
 
         // Assert
-        status.Should().Be(TaskRegistrationStatus.NotRegistered);
+        status.Should().Be(TaskRegistrationStatus.CheckFailed);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_BuildsCommandThatChecksCurrentExecutableAndArguments()
+    {
+        // Arrange
+        Mock<IProcessInstance> mockProcess = CreateMockProcess(0);
+        ProcessStartInfo? capturedPsi = null;
+        var mockRunner = new Mock<IProcessRunner>();
+        mockRunner.Setup(r => r.Start(It.IsAny<ProcessStartInfo>()))
+            .Callback<ProcessStartInfo>(psi => capturedPsi = psi)
+            .Returns(mockProcess.Object);
+
+        var service = new TaskSchedulerService(mockRunner.Object);
+
+        // Act
+        await service.GetStatusAsync();
+
+        // Assert
+        capturedPsi.Should().NotBeNull();
+        string command = capturedPsi!.ArgumentList[3];
+        command.Should().Contain("Get-ScheduledTask");
+        command.Should().Contain("$task.Actions");
+        command.Should().Contain("--tray");
+        command.Should().Contain("exit 2");
+        command.Should().Contain("exit 3");
     }
 
     [Fact]
