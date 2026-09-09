@@ -9,6 +9,9 @@ namespace SquirrelNotifier.WinUI3.Services;
 internal sealed class TaskSchedulerService : ITaskSchedulerService
 {
     private const string _taskName = "Squirrel Notifier";
+    private const int _notRegisteredExitCode = 1;
+    private const int _invalidExitCode = 2;
+    private const int _checkFailedExitCode = 3;
     private readonly IProcessRunner _processRunner;
 
     public TaskSchedulerService()
@@ -23,18 +26,32 @@ internal sealed class TaskSchedulerService : ITaskSchedulerService
 
     public async Task<TaskRegistrationStatus> GetStatusAsync()
     {
-        string command = $"if (Get-ScheduledTask -TaskName '{EscapePs(_taskName)}' -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}";
+        string expectedExePath = EscapePs(GetExePath());
+        string command =
+            $"try {{ $task = Get-ScheduledTask -TaskName '{EscapePs(_taskName)}' -ErrorAction SilentlyContinue; " +
+            $"if ($null -eq $task) {{ exit {_notRegisteredExitCode} }}; " +
+            $"$action = $task.Actions | Select-Object -First 1; " +
+            $"if ($null -ne $action -and $action.Execute -eq '{expectedExePath}' -and $action.Arguments -eq '--tray') " +
+            $"{{ exit 0 }} else {{ exit {_invalidExitCode} }} }} catch {{ exit {_checkFailedExitCode} }}";
         ProcessStartInfo psi = BuildPsi(command);
 
         try
         {
             using IProcessInstance proc = _processRunner.Start(psi);
+            Task<string> errorTask = proc.StandardError.ReadToEndAsync();
             await proc.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-            return proc.ExitCode == 0 ? TaskRegistrationStatus.Registered : TaskRegistrationStatus.NotRegistered;
+            await errorTask.ConfigureAwait(false);
+            return proc.ExitCode switch
+            {
+                0 => TaskRegistrationStatus.Registered,
+                _notRegisteredExitCode => TaskRegistrationStatus.NotRegistered,
+                _invalidExitCode => TaskRegistrationStatus.Invalid,
+                _ => TaskRegistrationStatus.CheckFailed,
+            };
         }
         catch
         {
-            return TaskRegistrationStatus.NotRegistered;
+            return TaskRegistrationStatus.CheckFailed;
         }
     }
 
@@ -80,7 +97,7 @@ internal sealed class TaskSchedulerService : ITaskSchedulerService
     public async Task RepairAsync()
     {
         TaskRegistrationStatus status = await GetStatusAsync().ConfigureAwait(false);
-        if (status == TaskRegistrationStatus.Registered)
+        if (status is TaskRegistrationStatus.Registered or TaskRegistrationStatus.Invalid)
         {
             await UnregisterAsync().ConfigureAwait(false);
         }
