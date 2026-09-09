@@ -39,11 +39,10 @@ internal sealed partial class MainWindow : Window
     private readonly ITaskSchedulerService _taskSchedulerService;
     private readonly ReviewRegistrationService _reviewRegistrationService;
     private readonly IRateLimitReminderService _rateLimitReminderService;
-    private readonly RateLimitFileService _rateLimitFileService;
     private readonly RateLimitSnapshotService _rateLimitSnapshotService;
-    private readonly RateLimitSnapshotResolver _rateLimitSnapshotResolver;
     private readonly AutoPauseGate _autoPauseGate = new();
     private readonly ReviewStartCoordinator _reviewStartCoordinator;
+    private readonly RateLimitRefreshCoordinator _rateLimitRefreshCoordinator;
     private readonly GatewayLoginCoordinator _gatewayLoginCoordinator = new();
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
@@ -119,9 +118,14 @@ internal sealed partial class MainWindow : Window
         _taskSchedulerService = taskSchedulerService;
         _reviewRegistrationService = reviewRegistrationService;
         _rateLimitReminderService = rateLimitReminderService;
-        _rateLimitFileService = rateLimitFileService;
         _rateLimitSnapshotService = new RateLimitSnapshotService(rateLimitFileService);
-        _rateLimitSnapshotResolver = new RateLimitSnapshotResolver(_rateLimitSnapshotService);
+        _rateLimitRefreshCoordinator = new RateLimitRefreshCoordinator(
+            rateLimitFileService,
+            _rateLimitSnapshotService,
+            new RateLimitSnapshotResolver(_rateLimitSnapshotService),
+            _settingsService,
+            _autoPauseGate,
+            _rateLimitReminderService);
         _reviewStartCoordinator = new ReviewStartCoordinator(
             _launcherService,
             _settingsService,
@@ -815,196 +819,32 @@ internal sealed partial class MainWindow : Window
 
     private async void OnRefreshRateLimitClick(object sender, RoutedEventArgs e)
     {
-        var fetchedLimits = new List<Models.RateLimitInfo>();
+        RateLimitRefreshResult result = await _rateLimitRefreshCoordinator.RefreshAsync(
+            new RateLimitRefreshRequest(_rateLimitAgentOptions, ResourceUrisBox.Text, GatewayUrlBox.Text),
+            CancellationToken.None).ConfigureAwait(true);
 
-        // Auto-Pause gate（#147/#167）の再評価に使う snapshot。表示取得と同じ操作内で
-        // 取得したものを再利用し、gate 用に同じ agent を二重取得しない（#167 レビュー対応）。
-        var capturedSnapshots = new Dictionary<string, Models.RateLimitSnapshot>(StringComparer.Ordinal);
-
-        // 旧形式（schemaVersion 等を欠く resetAt-only）の snapshot を書き出しているエージェント（#168）。
-        // 一覧表示はできるため気づかれにくいが、Auto-Pause gate の判定対象からは silent に外れる。
-        var legacySchemaAgentNames = new List<string>();
-
-        // 1. ローカルファイル経由（statusline フック連携、#139）または App Server 経由（codex、#163）
-        // IsAvailable=false は settings.json の手動編集等で IsMonitored=true に
-        // なっていても読み取りの対象にしない。
-        List<Models.RateLimitAgentOption> monitoredAgents = _rateLimitAgentOptions.Where(o => o.IsMonitored && o.IsAvailable).ToList();
-        foreach (Models.RateLimitAgentOption agent in monitoredAgents)
+        foreach (RateLimitRefreshAlert alert in result.Alerts)
         {
-            try
-            {
-                if (agent.Id == RateLimitSnapshotService.CodexAgentId)
-                {
-                    // codex は statusline を持たないため App Server（account/rateLimits/read）から取得する
-                    (Models.RateLimitSnapshot? snapshot, Services.CodexRateLimitFailureReason? failureReason) =
-                        await _rateLimitSnapshotService.CaptureCodexWithFailureReasonAsync(agent.Id, CancellationToken.None).ConfigureAwait(true);
-                    if (snapshot == null)
-                    {
-                        await ShowAlertDialogAsync(
-                            "レートリミット情報を取得できません",
-                            BuildCodexFailureMessage(agent.DisplayName, failureReason));
-                        continue;
-                    }
-
-                    capturedSnapshots[agent.Id] = snapshot;
-
-                    string sourceUri = Services.RateLimitFileService.BuildSourceIdentifier(agent.Id);
-                    foreach (Models.RateLimitInfo info in snapshot.Limits)
-                    {
-                        info.SourceUri = sourceUri;
-                        fetchedLimits.Add(info);
-                    }
-
-                    continue;
-                }
-
-                string? json = await _rateLimitFileService.ReadAgentStatusAsync(agent.Id, CancellationToken.None).ConfigureAwait(true);
-                if (json == null)
-                {
-                    await ShowAlertDialogAsync(
-                        "レートリミット情報がありません",
-                        $"{agent.DisplayName} のレートリミット情報がまだありません。statusline スクリプトの拡張が必要です。詳細は docs/statusline-integration.md を参照してください。");
-                    continue;
-                }
-
-                Models.RateLimitSnapshot? parsedSnapshot = Helpers.RateLimitStatusParser.ParseSnapshot(json);
-                if (parsedSnapshot is not null)
-                {
-                    capturedSnapshots[agent.Id] = parsedSnapshot;
-                }
-                else if (Helpers.RateLimitStatusParser.IsLegacySchema(json))
-                {
-                    legacySchemaAgentNames.Add(agent.DisplayName);
-                }
-
-                fetchedLimits.AddRange(Helpers.RateLimitStatusParser.Parse(json, Services.RateLimitFileService.BuildSourceIdentifier(agent.Id)));
-            }
-            catch (Exception ex)
-            {
-                await ShowAlertDialogAsync("取得エラー", $"{agent.DisplayName} のレートリミット状態の読み取りに失敗しました: {ex.Message}");
-            }
+            await ShowAlertDialogAsync(alert.Title, alert.Message);
         }
 
-        // 2. MCP ratelimit:// 経由（既存。サーバー側で将来対応された場合のために維持）
-        List<string> rateLimitUris = ResourceUrisBox.Text
-            .Split(_resourceUriLineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(uri => uri.StartsWith(Helpers.RateLimitStatusParser.UriScheme, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        // MCP 側の取得に失敗しても、既にローカルファイル経由で取得済みの結果は破棄せず
-        // 部分成功として表示する（#139 レビュー対応）。
-        if (rateLimitUris.Count > 0)
+        if (result.Status == RateLimitRefreshStatus.NoTargets)
         {
-            string gatewayUrl = GatewayUrlBox.Text;
-            if (!Uri.TryCreate(gatewayUrl, UriKind.Absolute, out Uri? endpoint))
-            {
-                await ShowAlertDialogAsync("設定エラー", "Gateway URL が正しくありません。先に Gateway URL を設定してください。");
-            }
-            else
-            {
-                string? token = Environment.GetEnvironmentVariable("MCP_PROBE_AUTH_TOKEN");
-                var probe = new Services.McpResourceProbe();
-
-                foreach (string uri in rateLimitUris)
-                {
-                    try
-                    {
-                        string json = await probe.ReadResourceTextAsync(endpoint, token, uri, CancellationToken.None).ConfigureAwait(true);
-                        fetchedLimits.AddRange(Helpers.RateLimitStatusParser.Parse(json, uri));
-                    }
-                    catch (Exception ex)
-                    {
-                        await ShowAlertDialogAsync("取得エラー", Services.McpResourceProbe.GetUserMessage(ex));
-                    }
-                }
-            }
-        }
-
-        if (monitoredAgents.Count == 0 && rateLimitUris.Count == 0)
-        {
-            await ShowAlertDialogAsync(
-                "監視対象未設定",
-                "レートリミット監視対象のエージェントが選択されていないか、Resource URIs に ratelimit:// で始まる URI が設定されていません。");
             return;
         }
 
         _rateLimits.Clear();
-        foreach (Models.RateLimitInfo info in fetchedLimits)
+        foreach (Models.RateLimitInfo info in result.Limits)
         {
-            info.IsReminderScheduled = _rateLimitReminderService.IsScheduled(info.ReminderKey);
             _rateLimits.Add(info);
         }
 
-        UpdateLegacySchemaInfoBar(legacySchemaAgentNames);
-        await RefreshAutoPauseGateAsync(capturedSnapshots).ConfigureAwait(true);
-    }
-
-    // codex の取得不可理由を原因ごとに出し分ける（#174）。JSON-RPC error の code/message は
-    // codex CLI バージョンにより変わりうるため確実に判別できず、Unknown を「未ログインの可能性を
-    // 含む」表現に留め、断定しない。
-    private static string BuildCodexFailureMessage(string agentDisplayName, Services.CodexRateLimitFailureReason? failureReason)
-    {
-        return failureReason switch
+        if (result.LegacySchemaMessage is string legacySchemaMessage)
         {
-            Services.CodexRateLimitFailureReason.CommandNotFound =>
-                $"{agentDisplayName} の codex コマンドが見つかりませんでした。codex CLI がインストールされ、PATH が通っているか確認してください。",
-            Services.CodexRateLimitFailureReason.Timeout =>
-                $"{agentDisplayName} の Codex App Server が応答しませんでした（タイムアウト）。しばらく待ってから再試行してください。",
-            _ =>
-                $"{agentDisplayName} のレートリミット情報を Codex App Server から取得できませんでした。codex にログイン済みか確認するか、しばらく待って再試行してください。",
-        };
-    }
-
-    // 旧形式 snapshot は一覧表示できてしまうため気づかれにくく、Auto-Pause gate（#147）が
-    // silent に無効化される（#168）。「更新」の都度、旧形式を書き出しているエージェントの
-    // 有無を再評価する.
-    private void UpdateLegacySchemaInfoBar(List<string> legacySchemaAgentNames)
-    {
-        if (legacySchemaAgentNames.Count == 0)
-        {
-            LegacySchemaInfoBar.IsOpen = false;
-            return;
+            LegacySchemaInfoBar.Message = legacySchemaMessage;
         }
 
-        LegacySchemaInfoBar.Message =
-            $"{string.Join("、", legacySchemaAgentNames)} の statusline snapshot が旧形式（schemaVersion なし）のため、"
-            + "Auto-Pause は機能しません。statusline フックを更新してください（docs/statusline-integration.md 参照）。";
-        LegacySchemaInfoBar.IsOpen = true;
-    }
-
-    // Auto-Pause gate（#147）は起動試行時にしか再評価されず、「更新」で fresh な
-    // snapshot を取得しても 95% 未満への解除が反映されなかった（#167）。reviewer /
-    // reviewed 両スロットの rateLimitAgentId を、実行中プロセス・MCP subscription・
-    // queue には作用しない読み取り専用の再評価として反映する。snapshot の取得・
-    // 再利用ロジックは RateLimitSnapshotResolver に委譲する（#167 レビュー対応）.
-    private async Task RefreshAutoPauseGateAsync(IReadOnlyDictionary<string, Models.RateLimitSnapshot> capturedSnapshots)
-    {
-        AppSettings settings = _settingsService.Settings;
-        TimeSpan freshnessThreshold = TimeSpan.FromMinutes(settings.RateLimitFreshnessThresholdMinutes);
-        List<string> gateAgentIds = new[]
-            {
-                _settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewer),
-                _settingsService.ResolveLauncherRateLimitAgentId(Models.LauncherRole.Reviewed),
-            }
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Select(id => id!)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        if (gateAgentIds.Count == 0)
-        {
-            return;
-        }
-
-        IReadOnlyList<Models.RateLimitSnapshot> gateSnapshots = await _rateLimitSnapshotResolver
-            .ResolveAsync(gateAgentIds, capturedSnapshots, CancellationToken.None)
-            .ConfigureAwait(true);
-
-        foreach (string agentId in gateAgentIds)
-        {
-            _autoPauseGate.Evaluate(agentId, gateSnapshots, freshnessThreshold);
-        }
-
+        LegacySchemaInfoBar.IsOpen = result.LegacySchemaMessage is not null;
         UpdateAutoPauseInfoBar();
     }
 
