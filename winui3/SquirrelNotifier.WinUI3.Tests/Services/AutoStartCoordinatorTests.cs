@@ -34,6 +34,14 @@ public sealed class AutoStartCoordinatorTests
     }
 
     [Fact]
+    public void DescribeStatus_ShouldRejectUnknownStatus()
+    {
+        Action action = () => AutoStartCoordinator.DescribeStatus((TaskRegistrationStatus)999);
+
+        action.Should().Throw<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("status");
+    }
+
+    [Fact]
     public async Task RefreshStatusAsync_ShouldApplyPresentationWhileSuppressingToggle()
     {
         var scheduler = new Mock<ITaskSchedulerService>();
@@ -72,6 +80,50 @@ public sealed class AutoStartCoordinatorTests
     }
 
     [Fact]
+    public async Task RefreshStatusAsync_ShouldSkipWhileOperationIsPending()
+    {
+        var scheduler = new Mock<ITaskSchedulerService>();
+        var coordinator = new AutoStartCoordinator(scheduler.Object);
+        var entered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var confirmation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<AutoStartOperationResult> operation = coordinator.ToggleAsync(
+            true,
+            _ =>
+            {
+                entered.SetResult(true);
+                return confirmation.Task;
+            });
+        await entered.Task;
+
+        bool applied = false;
+        await coordinator.RefreshStatusAsync(_ => applied = true);
+
+        applied.Should().BeFalse();
+        scheduler.Verify(service => service.GetStatusAsync(), Times.Never);
+        confirmation.SetResult(false);
+        await operation;
+    }
+
+    [Fact]
+    public async Task RefreshStatusAsync_ShouldSkipReentrantRefreshWhileApplyingPresentation()
+    {
+        var scheduler = new Mock<ITaskSchedulerService>();
+        scheduler.Setup(service => service.GetStatusAsync())
+            .ReturnsAsync(TaskRegistrationStatus.Registered);
+        var coordinator = new AutoStartCoordinator(scheduler.Object);
+        Task? nestedRefresh = null;
+
+        await coordinator.RefreshStatusAsync(_ =>
+        {
+            nestedRefresh = coordinator.RefreshStatusAsync(_ => { });
+        });
+
+        await nestedRefresh!;
+        scheduler.Verify(service => service.GetStatusAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task ToggleAsync_ShouldConfirmAndRegisterWhileKeepingOperationPending()
     {
         var scheduler = new Mock<ITaskSchedulerService>();
@@ -96,6 +148,27 @@ public sealed class AutoStartCoordinatorTests
         wasSuppressed.Should().BeTrue();
         coordinator.IsToggleSuppressed.Should().BeFalse();
         scheduler.Verify(service => service.RegisterAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ToggleAsync_ShouldConfirmAndUnregisterWhenDisabled()
+    {
+        var scheduler = new Mock<ITaskSchedulerService>();
+        var coordinator = new AutoStartCoordinator(scheduler.Object);
+        AutoStartConfirmation? actualConfirmation = null;
+
+        AutoStartOperationResult result = await coordinator.ToggleAsync(
+            false,
+            confirmation =>
+            {
+                actualConfirmation = confirmation;
+                return Task.FromResult(true);
+            });
+
+        result.Status.Should().Be(AutoStartOperationStatus.Completed);
+        actualConfirmation.Should().NotBeNull();
+        actualConfirmation!.Title.Should().Be("自動起動を解除します");
+        scheduler.Verify(service => service.UnregisterAsync(), Times.Once);
     }
 
     [Fact]
@@ -153,6 +226,45 @@ public sealed class AutoStartCoordinatorTests
         second.Status.Should().Be(AutoStartOperationStatus.SkippedBusy);
         confirmation.SetResult(false);
         (await first).Status.Should().Be(AutoStartOperationStatus.CancelledByUser);
+    }
+
+    [Fact]
+    public async Task RepairAsync_ShouldCompleteAndRequestRefresh()
+    {
+        var scheduler = new Mock<ITaskSchedulerService>();
+        var coordinator = new AutoStartCoordinator(scheduler.Object);
+
+        AutoStartOperationResult result = await coordinator.RepairAsync();
+
+        result.Status.Should().Be(AutoStartOperationStatus.Completed);
+        result.ShouldRefresh.Should().BeTrue();
+        coordinator.IsToggleSuppressed.Should().BeFalse();
+        scheduler.Verify(service => service.RepairAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepairAsync_ShouldSkipWhileAnotherOperationIsPending()
+    {
+        var scheduler = new Mock<ITaskSchedulerService>();
+        var coordinator = new AutoStartCoordinator(scheduler.Object);
+        var entered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var confirmation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<AutoStartOperationResult> operation = coordinator.ToggleAsync(
+            true,
+            _ =>
+            {
+                entered.SetResult(true);
+                return confirmation.Task;
+            });
+        await entered.Task;
+
+        AutoStartOperationResult result = await coordinator.RepairAsync();
+
+        result.Status.Should().Be(AutoStartOperationStatus.SkippedBusy);
+        scheduler.Verify(service => service.RepairAsync(), Times.Never);
+        confirmation.SetResult(false);
+        await operation;
     }
 
     [Fact]
