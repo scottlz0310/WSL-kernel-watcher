@@ -122,6 +122,14 @@ internal static class LauncherAgentCatalog
     public static LauncherAgentDefinition? Find(string id) => All.FirstOrDefault(d => d.Id == id);
 
     /// <summary>
+    /// Settings UI の ComboBox から選択可能なプリセットを取得する。カスタム項目も含む.
+    /// </summary>
+    /// <param name="id">検索するプリセット ID.</param>
+    /// <returns>一致したプリセット。見つからない場合は <see langword="null"/>.</returns>
+    public static LauncherAgentDefinition? FindWithCustomOption(string id)
+        => AllWithCustomOption.FirstOrDefault(d => d.Id == id);
+
+    /// <summary>
     /// command のみでプリセットを解決する。見つからない場合は <see langword="null"/>（#233）.
     /// </summary>
     /// <remarks>
