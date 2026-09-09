@@ -15,7 +15,7 @@ namespace SquirrelNotifier.WinUI3.Helpers;
 /// <c>.cmd</c> / <c>.bat</c> シムを <c>cmd.exe</c> 経由で起動すると、1 本のハンドルに
 /// 2 種類のエンコーディングが混ざる。cmd.exe 自身のメッセージ（「内部コマンドまたは外部コマンド…」
 /// 等）は OEM コードページで書き出され、その先で起動される実エージェント（Node 製 CLI 等）は
-/// UTF-8 を書き出す。<see cref="ProcessStartInfo.StandardOutputEncoding"/> にどちらを指定しても
+/// UTF-8 を書き出す。<see cref="System.Diagnostics.ProcessStartInfo.StandardOutputEncoding"/> にどちらを指定しても
 /// 一方が必ず化けるため、単一のエンコーディング指定では解決できない.
 /// </para>
 /// <para>
