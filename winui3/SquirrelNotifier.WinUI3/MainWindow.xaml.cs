@@ -43,6 +43,8 @@ internal sealed partial class MainWindow : Window
     private readonly AutoPauseGate _autoPauseGate = new();
     private readonly ReviewStartCoordinator _reviewStartCoordinator;
     private readonly RateLimitRefreshCoordinator _rateLimitRefreshCoordinator;
+    private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly LauncherPresetCoordinator _launcherPresetCoordinator;
     private readonly GatewayLoginCoordinator _gatewayLoginCoordinator = new();
     private readonly ObservableCollection<Models.RateLimitInfo> _rateLimits = new();
     private readonly ObservableCollection<Models.RateLimitAgentOption> _rateLimitAgentOptions = new();
@@ -50,8 +52,6 @@ internal sealed partial class MainWindow : Window
     private bool _isCheckingForUpdates;
     private bool _hasShownErrorBalloon;
     private bool _isAutoStartToggling;
-    private bool _isSyncingLauncherPresetSelection;
-    private bool _isApplyingLauncherPreset;
 
     // トレイポップアップのコンテンツ。XAML ではなくコードで生成し TaskbarIcon へ後から代入する（#229）
     private readonly ReviewNotificationPopup _reviewNotificationContent;
@@ -126,6 +126,8 @@ internal sealed partial class MainWindow : Window
             _settingsService,
             _autoPauseGate,
             _rateLimitReminderService);
+        _settingsCoordinator = new SettingsCoordinator(_settingsService);
+        _launcherPresetCoordinator = new LauncherPresetCoordinator();
         _reviewStartCoordinator = new ReviewStartCoordinator(
             _launcherService,
             _settingsService,
@@ -521,7 +523,7 @@ internal sealed partial class MainWindow : Window
 
     private void OnSettingChanged(object sender, TextChangedEventArgs e)
     {
-        if (_isInitializing || _isApplyingLauncherPreset)
+        if (_isInitializing || _launcherPresetCoordinator.IsApplying)
         {
             return;
         }
@@ -556,152 +558,97 @@ internal sealed partial class MainWindow : Window
     // 「カスタム」表示へ自然に戻すため.
     private void OnReviewerPresetSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_isInitializing || _isSyncingLauncherPresetSelection)
+        if (_isInitializing || _launcherPresetCoordinator.IsSynchronizing)
         {
             return;
         }
 
-        ApplyLauncherPreset(ReviewerPresetComboBox, ReviewerPathBox, ReviewerArgumentsBox, static d => d.ReviewerArgumentsTemplate);
+        ApplyLauncherPreset(LauncherRole.Reviewer, ReviewerPresetComboBox, ReviewerPathBox, ReviewerArgumentsBox);
     }
 
     private void OnReviewedPresetSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_isInitializing || _isSyncingLauncherPresetSelection)
+        if (_isInitializing || _launcherPresetCoordinator.IsSynchronizing)
         {
             return;
         }
 
-        ApplyLauncherPreset(ReviewedPresetComboBox, ReviewedPathBox, ReviewedArgumentsBox, static d => d.ReviewedArgumentsTemplate);
+        ApplyLauncherPreset(LauncherRole.Reviewed, ReviewedPresetComboBox, ReviewedPathBox, ReviewedArgumentsBox);
     }
 
-    private void ApplyLauncherPreset(ComboBox comboBox, TextBox pathBox, TextBox argumentsBox, Func<Models.LauncherAgentDefinition, string> argumentsTemplateSelector)
+    private void ApplyLauncherPreset(
+        LauncherRole role,
+        ComboBox comboBox,
+        TextBox pathBox,
+        TextBox argumentsBox)
     {
-        if (comboBox.SelectedItem is not Models.LauncherAgentDefinition selected
-            || selected.Id == Models.LauncherAgentCatalog.CustomPresetId)
+        bool applied = _launcherPresetCoordinator.TryApply(
+            comboBox.SelectedItem as Models.LauncherAgentDefinition,
+            role,
+            (command, arguments) =>
+            {
+                pathBox.Text = command;
+                argumentsBox.Text = arguments;
+            });
+        if (!applied)
         {
             return;
-        }
-
-        // path / arguments の反映中は TextChanged 経由の SaveCurrentSettings を抑止し、
-        // 両方反映し終えた後で一度だけ再判定・保存する。反映中に保存すると、arguments が
-        // たまたま反映先プリセットの値と一致している場合に arguments 側の TextChanged が
-        // 発火せず（値が変わらないため）、path のみ変更された中間状態（= custom 判定）の
-        // まま presetId が固定されてしまう（#149 レビュー対応）.
-        _isApplyingLauncherPreset = true;
-        try
-        {
-            pathBox.Text = selected.Command;
-            argumentsBox.Text = argumentsTemplateSelector(selected);
-        }
-        finally
-        {
-            _isApplyingLauncherPreset = false;
         }
 
         SaveCurrentSettings();
     }
 
     // combo box の選択を command / arguments の実値から再判定した presetId へ同期する。
-    // SelectionChanged のフィルイン処理を再帰させないよう _isSyncingLauncherPresetSelection で防護する.
+    // SelectionChanged のフィルイン処理を再帰させないよう coordinator の状態で防護する.
     private void UpdateLauncherPresetComboBoxSelection(ComboBox comboBox, string presetId)
     {
-        Models.LauncherAgentDefinition? match = Models.LauncherAgentCatalog.AllWithCustomOption
-            .FirstOrDefault(d => d.Id == presetId);
-
-        if (Equals(comboBox.SelectedItem, match))
-        {
-            return;
-        }
-
-        _isSyncingLauncherPresetSelection = true;
-        try
-        {
-            comboBox.SelectedItem = match;
-        }
-        finally
-        {
-            _isSyncingLauncherPresetSelection = false;
-        }
+        _launcherPresetCoordinator.TrySynchronizeSelection(
+            presetId,
+            () => comboBox.SelectedItem as Models.LauncherAgentDefinition,
+            match => comboBox.SelectedItem = match);
     }
 
     private async void OnAutoDetectGatewayUrlClick(object sender, RoutedEventArgs e)
     {
-        try
+        GatewayDetectionResult detection = await _settingsCoordinator.DetectGatewayUrlsAsync(CancellationToken.None);
+        if (!detection.Succeeded)
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "docker",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            process.StartInfo.ArgumentList.Add("ps");
-            process.StartInfo.ArgumentList.Add("--filter");
-            process.StartInfo.ArgumentList.Add("name=mcp-gateway");
-            process.StartInfo.ArgumentList.Add("--format");
-            process.StartInfo.ArgumentList.Add("{{.Ports}}");
-            process.Start();
-            Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
-            Task<string> stderrTask = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            string output = await stdoutTask;
-            string stderr = await stderrTask;
-            if (process.ExitCode != 0 && string.IsNullOrWhiteSpace(output))
-            {
-                await ShowAlertDialogAsync("Docker エラー", $"Docker コマンドが失敗しました。\n{stderr.Trim()}");
-                return;
-            }
-
-            IReadOnlyList<string> baseUrls = DockerPortParser.ParseGatewayBaseUrls(output);
-            if (baseUrls.Count == 0)
-            {
-                await ShowAlertDialogAsync(
-                    "コンテナが見つかりませんでした",
-                    "コンテナ名に 'mcp-gateway' が含まれているか、コンテナが起動しているか確認してください。");
-                return;
-            }
-
-            // mcp-gateway は route（例: /mcp/thread-owl）配下に MCP endpoint を割り当てるため、
-            // 検出した base URL（host:port）に加えて route パスを選択・入力できるようにする。
-            var portCombo = new ComboBox
-            {
-                ItemsSource = baseUrls,
-                SelectedIndex = 0,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-            };
-            var routeBox = new TextBox
-            {
-                Text = DockerPortParser.DefaultMcpRoute,
-                PlaceholderText = DockerPortParser.DefaultMcpRoute,
-            };
-            var panel = new StackPanel { Spacing = 8 };
-            panel.Children.Add(new TextBlock { Text = "ポート（コンテナ）:" });
-            panel.Children.Add(portCombo);
-            panel.Children.Add(new TextBlock { Text = "MCP route パス:" });
-            panel.Children.Add(routeBox);
-
-            var selectDialog = new ContentDialog
-            {
-                Title = "Gateway URL を設定",
-                Content = panel,
-                PrimaryButtonText = "設定",
-                CloseButtonText = "キャンセル",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = Content.XamlRoot,
-            };
-            ContentDialogResult result = await selectDialog.ShowAsync(ContentDialogPlacement.Popup);
-            if (result == ContentDialogResult.Primary && portCombo.SelectedItem is string selectedBase)
-            {
-                GatewayUrlBox.Text = DockerPortParser.CombineRoute(selectedBase, routeBox.Text);
-            }
+            await ShowAlertDialogAsync(detection.ErrorTitle!, detection.ErrorMessage!);
+            return;
         }
-        catch (System.ComponentModel.Win32Exception)
+
+        // mcp-gateway は route（例: /mcp/thread-owl）配下に MCP endpoint を割り当てるため、
+        // 検出した base URL（host:port）に加えて route パスを選択・入力できるようにする。
+        var portCombo = new ComboBox
         {
-            await ShowAlertDialogAsync(
-                "Docker が見つかりませんでした",
-                "Docker がインストールされていないか PATH に含まれていません。Gateway URL を手動で入力してください。");
+            ItemsSource = detection.BaseUrls,
+            SelectedIndex = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var routeBox = new TextBox
+        {
+            Text = DockerPortParser.DefaultMcpRoute,
+            PlaceholderText = DockerPortParser.DefaultMcpRoute,
+        };
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(new TextBlock { Text = "ポート（コンテナ）:" });
+        panel.Children.Add(portCombo);
+        panel.Children.Add(new TextBlock { Text = "MCP route パス:" });
+        panel.Children.Add(routeBox);
+
+        var selectDialog = new ContentDialog
+        {
+            Title = "Gateway URL を設定",
+            Content = panel,
+            PrimaryButtonText = "設定",
+            CloseButtonText = "キャンセル",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        ContentDialogResult result = await selectDialog.ShowAsync(ContentDialogPlacement.Popup);
+        if (result == ContentDialogResult.Primary && portCombo.SelectedItem is string selectedBase)
+        {
+            GatewayUrlBox.Text = DockerPortParser.CombineRoute(selectedBase, routeBox.Text);
         }
     }
 
@@ -730,8 +677,6 @@ internal sealed partial class MainWindow : Window
         "re-review-requested",
     ];
 
-    private static readonly char[] _resourceUriLineSeparators = ['\r', '\n'];
-
     private async void OnSelectResourceUriClick(object sender, RoutedEventArgs e)
     {
         var listView = new ListView { ItemsSource = _knownResourceUris, SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 160 };
@@ -747,73 +692,44 @@ internal sealed partial class MainWindow : Window
         ContentDialogResult result = await selectDialog.ShowAsync(ContentDialogPlacement.Popup);
         if (result == ContentDialogResult.Primary && listView.SelectedItems.Count > 0)
         {
-            HashSet<string> existing = ResourceUrisBox.Text
-                .Split(_resourceUriLineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToHashSet();
-            foreach (object item in listView.SelectedItems)
-            {
-                if (item is string uri)
-                {
-                    existing.Add(uri);
-                }
-            }
-
-            ResourceUrisBox.Text = string.Join("\n", existing);
+            ResourceUrisBox.Text = Helpers.SettingsInputParser.MergeResourceUris(
+                ResourceUrisBox.Text,
+                listView.SelectedItems.OfType<string>());
         }
     }
 
     private async void OnFetchResourceUriFromMcpClick(object sender, RoutedEventArgs e)
     {
-        string gatewayUrl = GatewayUrlBox.Text;
-        if (!Uri.TryCreate(gatewayUrl, UriKind.Absolute, out Uri? endpoint))
+        ResourceUriFetchResult fetch = await _settingsCoordinator.FetchResourceUrisAsync(
+            GatewayUrlBox.Text,
+            CancellationToken.None);
+        if (!fetch.Succeeded)
         {
-            await ShowAlertDialogAsync("設定エラー", "Gateway URL が正しくありません。先に Gateway URL を設定してください。");
+            await ShowAlertDialogAsync(fetch.ErrorTitle!, fetch.ErrorMessage!);
             return;
         }
 
-        string? token = Environment.GetEnvironmentVariable("MCP_PROBE_AUTH_TOKEN");
-
-        try
+        var listView = new ListView
         {
-            var probe = new Services.McpResourceProbe();
-            IReadOnlyList<string> uris = await probe.FetchResourceUrisAsync(endpoint, token, CancellationToken.None);
-
-            if (uris.Count == 0)
-            {
-                await ShowAlertDialogAsync("リソースが見つかりません", "mcp-gateway からリソース URI を取得しましたが、リストが空でした。");
-                return;
-            }
-
-            var listView = new ListView { ItemsSource = uris, SelectionMode = ListViewSelectionMode.Multiple, MaxHeight = 160 };
-            var selectDialog = new ContentDialog
-            {
-                Title = "追加する Resource URI を選択",
-                Content = listView,
-                PrimaryButtonText = "追加",
-                CloseButtonText = "キャンセル",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = Content.XamlRoot,
-            };
-            ContentDialogResult result = await selectDialog.ShowAsync(ContentDialogPlacement.Popup);
-            if (result == ContentDialogResult.Primary && listView.SelectedItems.Count > 0)
-            {
-                HashSet<string> existing = ResourceUrisBox.Text
-                    .Split(_resourceUriLineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .ToHashSet();
-                foreach (object item in listView.SelectedItems)
-                {
-                    if (item is string selectedUri)
-                    {
-                        existing.Add(selectedUri);
-                    }
-                }
-
-                ResourceUrisBox.Text = string.Join("\n", existing);
-            }
-        }
-        catch (Exception ex)
+            ItemsSource = fetch.ResourceUris,
+            SelectionMode = ListViewSelectionMode.Multiple,
+            MaxHeight = 160,
+        };
+        var selectDialog = new ContentDialog
         {
-            await ShowAlertDialogAsync("取得エラー", Services.McpResourceProbe.GetUserMessage(ex));
+            Title = "追加する Resource URI を選択",
+            Content = listView,
+            PrimaryButtonText = "追加",
+            CloseButtonText = "キャンセル",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        ContentDialogResult result = await selectDialog.ShowAsync(ContentDialogPlacement.Popup);
+        if (result == ContentDialogResult.Primary && listView.SelectedItems.Count > 0)
+        {
+            ResourceUrisBox.Text = Helpers.SettingsInputParser.MergeResourceUris(
+                ResourceUrisBox.Text,
+                listView.SelectedItems.OfType<string>());
         }
     }
 
@@ -905,56 +821,26 @@ internal sealed partial class MainWindow : Window
 
     private void SaveCurrentSettings()
     {
-        try
+        SettingsSaveResult result = _settingsCoordinator.Save(new SettingsInput(
+            CommandPathBox.Text,
+            ArgumentsBox.Text,
+            GatewayUrlBox.Text,
+            ResourceUrisBox.Text,
+            TimeoutBox.Value,
+            ReviewerPathBox.Text,
+            ReviewerArgumentsBox.Text,
+            ReviewedPathBox.Text,
+            ReviewedArgumentsBox.Text,
+            LauncherTimeoutBox.Value,
+            RepositoryCheckoutMappingsBox.Text));
+        if (!result.IsSaved)
         {
-            string commandPath = CommandPathBox.Text;
-            string arguments = ArgumentsBox.Text;
-            string gatewayUrl = GatewayUrlBox.Text;
-            List<string> resourceUris = ResourceUrisBox.Text
-                .Split(_resourceUriLineSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct()
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .ToList();
-            if (resourceUris.Count == 0)
-            {
-                return;
-            }
-
-            int timeoutMs = double.IsNaN(TimeoutBox.Value) ? 60000 : (int)TimeoutBox.Value;
-
-            string reviewerPath = ReviewerPathBox.Text;
-            string reviewerArguments = ReviewerArgumentsBox.Text;
-            string reviewedPath = ReviewedPathBox.Text;
-            string reviewedArguments = ReviewedArgumentsBox.Text;
-            Dictionary<string, string> repositoryCheckoutMappings =
-                Helpers.RepositoryCheckoutMappingParser.Parse(RepositoryCheckoutMappingsBox.Text);
-            int launcherTimeoutMs = double.IsNaN(LauncherTimeoutBox.Value) ? 1800000 : (int)LauncherTimeoutBox.Value;
-
-            string reviewerPresetId = Models.LauncherAgentCatalog.ResolvePresetId(reviewerPath, reviewerArguments, Models.LauncherRole.Reviewer);
-            string reviewedPresetId = Models.LauncherAgentCatalog.ResolvePresetId(reviewedPath, reviewedArguments, Models.LauncherRole.Reviewed);
-            UpdateLauncherPresetComboBoxSelection(ReviewerPresetComboBox, reviewerPresetId);
-            UpdateLauncherPresetComboBoxSelection(ReviewedPresetComboBox, reviewedPresetId);
-
-            _settingsService.UpdateSettings(
-                commandPath,
-                arguments,
-                gatewayUrl,
-                resourceUris,
-                timeoutMs,
-                reviewerPath,
-                reviewerArguments,
-                reviewedPath,
-                reviewedArguments,
-                launcherTimeoutMs,
-                reviewerPresetId,
-                reviewedPresetId);
-            _settingsService.UpdateRepositoryCheckoutMappings(repositoryCheckoutMappings);
-            UpdateAutoPauseNotApplicableInfoBar();
+            return;
         }
-        catch
-        {
-            // Ignore validation errors during typing
-        }
+
+        UpdateLauncherPresetComboBoxSelection(ReviewerPresetComboBox, result.ReviewerPresetId!);
+        UpdateLauncherPresetComboBoxSelection(ReviewedPresetComboBox, result.ReviewedPresetId!);
+        UpdateAutoPauseNotApplicableInfoBar();
     }
 
     private void OnAppWindowClosing(object? sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)

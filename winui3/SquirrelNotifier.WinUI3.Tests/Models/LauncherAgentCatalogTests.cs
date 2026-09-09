@@ -63,6 +63,15 @@ public class LauncherAgentCatalogTests
     }
 
     [Theory]
+    [InlineData("claude", "claude")]
+    [InlineData("custom", LauncherAgentCatalog.CustomPresetId)]
+    [InlineData("unknown", null)]
+    public void FindWithCustomOption_ShouldFindPresetsAvailableInSettings(string presetId, string? expectedPresetId)
+    {
+        LauncherAgentCatalog.FindWithCustomOption(presetId)?.Id.Should().Be(expectedPresetId);
+    }
+
+    [Theory]
     [InlineData("claude", "-p \"/thread-owl-pr-reviewer {owner}/{repo}#{prNumber} を {reason} モードでレビューしてください\" --verbose --output-format stream-json", "reviewer", "claude")]
     [InlineData("claude", "-p \"/review-raven-thread-owl-cycle {owner}/{repo}#{prNumber} のレビュー指摘に対応してください\" --verbose --output-format stream-json", "reviewed", "claude")]
     [InlineData("claude", "-p \"/thread-owl-pr-reviewer {owner}/{repo}#{prNumber} を {reason} モードでレビューしてください\"", "reviewer", LauncherAgentCatalog.CustomPresetId)]
