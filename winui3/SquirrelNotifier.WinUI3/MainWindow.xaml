@@ -4,12 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:models="using:SquirrelNotifier.WinUI3.Models"
     xmlns:tb="using:H.NotifyIcon"
     mc:Ignorable="d"
     Title="Squirrel Notifier">
     <Grid Padding="16"
-          RowDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+          RowDefinitions="Auto,Auto,*,Auto"
           RowSpacing="12">
         <Grid.Resources>
             <XamlUICommand x:Key="TrayOpenCommand" ExecuteRequested="OnTrayOpenCommandExecuteRequested"/>
@@ -73,106 +74,7 @@
                      Margin="0,4,0,0"/>
         </StackPanel>
 
-        <Expander Grid.Row="1"
-                  x:Name="SettingsExpander"
-                  Header="Settings"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Stretch">
-            <ScrollViewer MaxHeight="240">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
-                      ColumnDefinitions="Auto,*"
-                      RowSpacing="8"
-                      ColumnSpacing="8"
-                      Margin="0,8,0,8">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Command Path:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="CommandPathBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Arguments:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="ArgumentsBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Gateway URL:" VerticalAlignment="Center"/>
-                    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
-                        <TextBox Grid.Column="0" x:Name="GatewayUrlBox" TextChanged="OnSettingChanged"
-                                 PlaceholderText="http://localhost:8080/mcp/thread-owl"/>
-                        <Button Grid.Column="1" Content="コンテナから自動設定" Click="OnAutoDetectGatewayUrlClick"/>
-                        <Button Grid.Column="2" x:Name="GatewayLoginButton" Content="ログイン" Click="OnLoginToGatewayClick"/>
-                    </Grid>
-
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Resource URIs:" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                    <StackPanel Grid.Row="3" Grid.Column="1" Spacing="4">
-                        <TextBox x:Name="ResourceUrisBox"
-                                 AcceptsReturn="True"
-                                 Height="60"
-                                 TextWrapping="Wrap"
-                                 PlaceholderText="1行に1つのURIを入力"
-                                 TextChanged="OnSettingChanged"/>
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Button Content="URI を追加" Click="OnSelectResourceUriClick"/>
-                            <Button Content="MCP から取得" Click="OnFetchResourceUriFromMcpClick"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Timeout (ms):" VerticalAlignment="Center"/>
-                    <NumberBox Grid.Row="4" Grid.Column="1" x:Name="TimeoutBox" Minimum="1" Maximum="300000" ValueChanged="OnTimeoutChanged"/>
-
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Reviewer Preset:" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Row="5" Grid.Column="1" x:Name="ReviewerPresetComboBox"
-                              DisplayMemberPath="DisplayName"
-                              SelectionChanged="OnReviewerPresetSelectionChanged"/>
-
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Reviewer Path:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="6" Grid.Column="1" x:Name="ReviewerPathBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Reviewer Args:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="7" Grid.Column="1" x:Name="ReviewerArgumentsBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Reviewed Preset:" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Row="8" Grid.Column="1" x:Name="ReviewedPresetComboBox"
-                              DisplayMemberPath="DisplayName"
-                              SelectionChanged="OnReviewedPresetSelectionChanged"/>
-
-                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Reviewed Path:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="9" Grid.Column="1" x:Name="ReviewedPathBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Reviewed Args:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="10" Grid.Column="1" x:Name="ReviewedArgumentsBox" TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="11" Grid.Column="0" Text="Checkout Mappings:" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                    <TextBox Grid.Row="11" Grid.Column="1" x:Name="RepositoryCheckoutMappingsBox"
-                             AcceptsReturn="True"
-                             Height="60"
-                             TextWrapping="NoWrap"
-                             PlaceholderText="owner/repo=C:\src\repo（1行に1件）"
-                             TextChanged="OnSettingChanged"/>
-
-                    <TextBlock Grid.Row="12" Grid.Column="0" Text="Launcher Timeout:" VerticalAlignment="Center"/>
-                    <NumberBox Grid.Row="12" Grid.Column="1" x:Name="LauncherTimeoutBox" Minimum="1" Maximum="7200000" ValueChanged="OnTimeoutChanged"/>
-
-                    <TextBlock Grid.Row="13" Grid.Column="0" Text="レビュー自動開始:" VerticalAlignment="Center"/>
-                    <ToggleSwitch Grid.Row="13" Grid.Column="1" x:Name="AutoReviewStartToggle"
-                                  OnContent="有効" OffContent="無効"
-                                  Toggled="OnAutoReviewStartToggled"/>
-
-                    <TextBlock Grid.Row="14" Grid.Column="0" Text="ライブログ自動クローズ:" VerticalAlignment="Center"/>
-                    <ToggleSwitch Grid.Row="14" Grid.Column="1" x:Name="LiveLogAutoCloseToggle"
-                                  OnContent="有効" OffContent="無効"
-                                  Toggled="OnLiveLogAutoCloseToggled"/>
-
-                    <TextBlock Grid.Row="15" Grid.Column="0" Text="自動起動:" VerticalAlignment="Center"/>
-                    <ToggleSwitch Grid.Row="15" Grid.Column="1" x:Name="AutoStartToggle"
-                                  OnContent="有効" OffContent="無効"
-                                  Toggled="OnAutoStartToggled"/>
-
-                    <TextBlock Grid.Row="16" Grid.Column="0" Text="タスク状態:" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="16" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <TextBlock x:Name="AutoStartStatusText" VerticalAlignment="Center" Text="確認中..."/>
-                        <Button x:Name="RepairAutoStartButton" Content="修復" Click="OnRepairAutoStartClick" IsEnabled="False"/>
-                    </StackPanel>
-                </Grid>
-            </ScrollViewer>
-        </Expander>
-
-        <Border Grid.Row="2"
+        <Border Grid.Row="1"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
@@ -191,155 +93,282 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="3"
-                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="8">
-            <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Text="レートリミット状態" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="更新" Click="OnRefreshRateLimitClick"/>
-                </Grid>
-                <InfoBar x:Name="AutoPauseInfoBar"
-                         IsOpen="False"
-                         IsClosable="False"
-                         Severity="Warning"
-                         Title="Auto-Pause 中（新規エージェント起動を停止）"/>
-                <InfoBar x:Name="AutoPauseNotApplicableInfoBar"
-                         IsOpen="False"
-                         IsClosable="False"
-                         Severity="Warning"
-                         Title="Auto-Pause の対象外のランチャーがあります"/>
-                <InfoBar x:Name="LegacySchemaInfoBar"
-                         IsOpen="False"
-                         IsClosable="False"
-                         Severity="Warning"
-                         Title="statusline snapshot が旧形式です">
-                    <InfoBar.ActionButton>
-                        <Button Content="移行手順を見る" Click="OnOpenStatuslineDocsClick"/>
-                    </InfoBar.ActionButton>
-                </InfoBar>
-                <TextBlock Text="監視対象:" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
-                <ItemsControl x:Name="RateLimitAgentList">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="12"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="models:RateLimitAgentOption">
-                            <CheckBox Content="{x:Bind DisplayName}"
-                                      IsChecked="{x:Bind IsMonitored, Mode=TwoWay}"
-                                      IsEnabled="{x:Bind IsAvailable}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <ListView x:Name="RateLimitList"
-                          Height="90"
-                          SelectionMode="None">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:RateLimitInfo">
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,2">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="{x:Bind Label}" FontWeight="Medium"/>
-                                    <TextBlock Text="{x:Bind ResetAtDisplay}" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+        <ScrollViewer Grid.Row="2" x:Name="PaneViewport" SizeChanged="OnPaneViewportSizeChanged"
+                      HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="PaneGrid" MinHeight="400" VerticalAlignment="Top">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="64"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="64"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="64"/>
+                </Grid.RowDefinitions>
+                <Expander Grid.Row="0"
+                          x:Name="SettingsExpander"
+                          Header="Settings"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch">
+                    <ScrollViewer x:Name="SettingsScrollViewer" Height="160" MinHeight="80"
+                                  MaxHeight="80"
+                                  HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                              ColumnDefinitions="Auto,*"
+                              RowSpacing="8"
+                              ColumnSpacing="8"
+                              Margin="0,8,0,8">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Command Path:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="CommandPathBox" TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Arguments:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ArgumentsBox" TextChanged="OnSettingChanged"/>
+
+                            <Grid Grid.Row="2" Grid.ColumnSpan="2" RowDefinitions="Auto,Auto"
+                                  ColumnDefinitions="Auto,*" RowSpacing="4" ColumnSpacing="8">
+                                <TextBlock Text="Gateway URL:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" x:Name="GatewayUrlBox" TextChanged="OnSettingChanged"
+                                         PlaceholderText="http://localhost:8080/mcp/thread-owl"/>
+                                <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal"
+                                            HorizontalAlignment="Right" Spacing="4">
+                                    <Button Content="コンテナから自動設定" Click="OnAutoDetectGatewayUrlClick"/>
+                                    <Button x:Name="GatewayLoginButton" Content="ログイン" Click="OnLoginToGatewayClick"/>
                                 </StackPanel>
-                                <Button Grid.Column="1"
-                                        Content="{x:Bind ReminderButtonText, Mode=OneWay}"
-                                        Click="OnToggleRateLimitReminderClick"
-                                        CommandParameter="{x:Bind}"
-                                        VerticalAlignment="Center"/>
                             </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
-        </Border>
 
-        <Border Grid.Row="4"
-                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="8">
-            <Grid RowDefinitions="*,*">
-                <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                    <TextBlock Text="Recent review events"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,4"/>
-                    <ListView x:Name="ReviewEventList"
-                               Height="110"
-                               SelectionMode="None">
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="models:ReviewEvent">
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,2">
-                                    <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" FontWeight="Medium"/>
-                                        <HyperlinkButton Content="{x:Bind PrCaption}"
-                                                         Click="OnOpenPrClick"
-                                                         CommandParameter="{x:Bind PrUrl}"
-                                                         FontSize="11"
-                                                         Padding="0"
-                                                         HorizontalAlignment="Left"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                        <SplitButton Content="レビューする"
-                                                     AutomationProperties.Name="reviewer としてレビューを起動"
-                                                     Click="OnLaunchReviewerClick"
-                                                     CommandParameter="{x:Bind}">
-                                            <SplitButton.Flyout>
-                                                <MenuFlyout Placement="Bottom">
-                                                    <MenuFlyoutItem Text="コマンドをコピー"
-                                                                    Click="OnCopyReviewerCommandClick"
-                                                                    CommandParameter="{x:Bind}"/>
-                                                </MenuFlyout>
-                                            </SplitButton.Flyout>
-                                        </SplitButton>
-                                        <SplitButton Content="レビューに対応"
-                                                     AutomationProperties.Name="reviewed としてレビュー対応を起動"
-                                                     Click="OnLaunchReviewedClick"
-                                                     CommandParameter="{x:Bind}">
-                                            <SplitButton.Flyout>
-                                                <MenuFlyout Placement="Bottom">
-                                                    <MenuFlyoutItem Text="コマンドをコピー"
-                                                                    Click="OnCopyReviewedCommandClick"
-                                                                    CommandParameter="{x:Bind}"/>
-                                                </MenuFlyout>
-                                            </SplitButton.Flyout>
-                                        </SplitButton>
-                                        <Button AutomationProperties.Name="イベントを片付ける"
-                                                ToolTipService.ToolTip="このイベントを一覧から片付ける"
-                                                Click="OnDismissEventClick"
-                                                CommandParameter="{x:Bind}"
-                                                Padding="6,4">
-                                            <FontIcon Glyph="&#xE711;" FontSize="12"/>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Resource URIs:" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Spacing="4">
+                                <TextBox x:Name="ResourceUrisBox"
+                                         AcceptsReturn="True"
+                                         Height="60"
+                                         TextWrapping="Wrap"
+                                         PlaceholderText="1行に1つのURIを入力"
+                                         TextChanged="OnSettingChanged"/>
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <Button Content="URI を追加" Click="OnSelectResourceUriClick"/>
+                                    <Button Content="MCP から取得" Click="OnFetchResourceUriFromMcpClick"/>
+                                </StackPanel>
+                            </StackPanel>
 
-                <StackPanel Grid.Row="1">
-                    <TextBlock Text="Recent activity"
-                               FontWeight="SemiBold"
-                               Margin="0,0,0,4"/>
-                    <ListView x:Name="LogList"
-                              Height="110"
-                              SelectionMode="None">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}"
-                                           TextWrapping="Wrap"/>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Timeout (ms):" VerticalAlignment="Center"/>
+                            <NumberBox Grid.Row="4" Grid.Column="1" x:Name="TimeoutBox" Minimum="1" Maximum="300000" ValueChanged="OnTimeoutChanged"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Reviewer Preset:" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="5" Grid.Column="1" x:Name="ReviewerPresetComboBox"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectionChanged="OnReviewerPresetSelectionChanged"/>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Reviewer Path:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="6" Grid.Column="1" x:Name="ReviewerPathBox" TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Reviewer Args:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="7" Grid.Column="1" x:Name="ReviewerArgumentsBox" TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Reviewed Preset:" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="8" Grid.Column="1" x:Name="ReviewedPresetComboBox"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectionChanged="OnReviewedPresetSelectionChanged"/>
+
+                            <TextBlock Grid.Row="9" Grid.Column="0" Text="Reviewed Path:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="9" Grid.Column="1" x:Name="ReviewedPathBox" TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="10" Grid.Column="0" Text="Reviewed Args:" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="10" Grid.Column="1" x:Name="ReviewedArgumentsBox" TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="11" Grid.Column="0" Text="Checkout Mappings:" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <TextBox Grid.Row="11" Grid.Column="1" x:Name="RepositoryCheckoutMappingsBox"
+                                     AcceptsReturn="True"
+                                     Height="60"
+                                     TextWrapping="NoWrap"
+                                     PlaceholderText="owner/repo=C:\src\repo（1行に1件）"
+                                     TextChanged="OnSettingChanged"/>
+
+                            <TextBlock Grid.Row="12" Grid.Column="0" Text="Launcher Timeout:" VerticalAlignment="Center"/>
+                            <NumberBox Grid.Row="12" Grid.Column="1" x:Name="LauncherTimeoutBox" Minimum="1" Maximum="7200000" ValueChanged="OnTimeoutChanged"/>
+
+                            <TextBlock Grid.Row="13" Grid.Column="0" Text="レビュー自動開始:" VerticalAlignment="Center"/>
+                            <ToggleSwitch Grid.Row="13" Grid.Column="1" x:Name="AutoReviewStartToggle"
+                                          OnContent="有効" OffContent="無効"
+                                          Toggled="OnAutoReviewStartToggled"/>
+
+                            <TextBlock Grid.Row="14" Grid.Column="0" Text="ライブログ自動クローズ:" VerticalAlignment="Center"/>
+                            <ToggleSwitch Grid.Row="14" Grid.Column="1" x:Name="LiveLogAutoCloseToggle"
+                                          OnContent="有効" OffContent="無効"
+                                          Toggled="OnLiveLogAutoCloseToggled"/>
+
+                            <TextBlock Grid.Row="15" Grid.Column="0" Text="自動起動:" VerticalAlignment="Center"/>
+                            <ToggleSwitch Grid.Row="15" Grid.Column="1" x:Name="AutoStartToggle"
+                                          OnContent="有効" OffContent="無効"
+                                          Toggled="OnAutoStartToggled"/>
+
+                            <TextBlock Grid.Row="16" Grid.Column="0" Text="タスク状態:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="16" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="AutoStartStatusText" VerticalAlignment="Center" Text="確認中..."/>
+                                <Button x:Name="RepairAutoStartButton" Content="修復" Click="OnRepairAutoStartClick" IsEnabled="False"/>
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
+                </Expander>
+
+                <controls:ContentSizer Grid.Row="1" Height="12" HorizontalAlignment="Stretch"
+                                       Orientation="Horizontal" TargetControl="{x:Bind SettingsScrollViewer}"
+                                       Visibility="{x:Bind SettingsExpander.IsExpanded, Mode=OneWay}"
+                                       AutomationProperties.Name="Settings の高さを調整"
+                                       ToolTipService.ToolTip="ドラッグまたは上下キーで設定欄の高さを調整"/>
+                <Border Grid.Row="2"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="8">
+                    <ScrollViewer HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="レートリミット状態" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="更新" Click="OnRefreshRateLimitClick"/>
+                            </Grid>
+                            <InfoBar x:Name="AutoPauseInfoBar"
+                                     IsOpen="False"
+                                     IsClosable="False"
+                                     Severity="Warning"
+                                     Title="Auto-Pause 中（新規エージェント起動を停止）"/>
+                            <InfoBar x:Name="AutoPauseNotApplicableInfoBar"
+                                     IsOpen="False"
+                                     IsClosable="False"
+                                     Severity="Warning"
+                                     Title="Auto-Pause の対象外のランチャーがあります"/>
+                            <InfoBar x:Name="LegacySchemaInfoBar"
+                                     IsOpen="False"
+                                     IsClosable="False"
+                                     Severity="Warning"
+                                     Title="statusline snapshot が旧形式です">
+                                <InfoBar.ActionButton>
+                                    <Button Content="移行手順を見る" Click="OnOpenStatuslineDocsClick"/>
+                                </InfoBar.ActionButton>
+                            </InfoBar>
+                            <TextBlock Text="監視対象:" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                            <ItemsControl x:Name="RateLimitAgentList">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="12"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:RateLimitAgentOption">
+                                        <CheckBox Content="{x:Bind DisplayName}"
+                                                  IsChecked="{x:Bind IsMonitored, Mode=TwoWay}"
+                                                  IsEnabled="{x:Bind IsAvailable}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ListView x:Name="RateLimitList"
+                                      SelectionMode="None">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:RateLimitInfo">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,2">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{x:Bind Label}" FontWeight="Medium"/>
+                                                <TextBlock Text="{x:Bind ResetAtDisplay}" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Content="{x:Bind ReminderButtonText, Mode=OneWay}"
+                                                    Click="OnToggleRateLimitReminderClick"
+                                                    CommandParameter="{x:Bind}"
+                                                    VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <controls:GridSplitter Grid.Row="3" Height="12" HorizontalAlignment="Stretch"
+                                       ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                                       AutomationProperties.Name="レートリミットとイベントの高さを調整" ToolTipService.ToolTip="ドラッグまたは上下キーで高さを調整"/>
+                <Border Grid.Row="4" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="8">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Text="Recent review events"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <ListView Grid.Row="1" x:Name="ReviewEventList"
+                                   SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="models:ReviewEvent">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,2">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{x:Bind Message}" TextWrapping="Wrap" FontWeight="Medium"/>
+                                            <HyperlinkButton Content="{x:Bind PrCaption}"
+                                                             Click="OnOpenPrClick"
+                                                             CommandParameter="{x:Bind PrUrl}"
+                                                             FontSize="11"
+                                                             Padding="0"
+                                                             HorizontalAlignment="Left"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <SplitButton Content="レビューする"
+                                                         AutomationProperties.Name="reviewer としてレビューを起動"
+                                                         Click="OnLaunchReviewerClick"
+                                                         CommandParameter="{x:Bind}">
+                                                <SplitButton.Flyout>
+                                                    <MenuFlyout Placement="Bottom">
+                                                        <MenuFlyoutItem Text="コマンドをコピー"
+                                                                        Click="OnCopyReviewerCommandClick"
+                                                                        CommandParameter="{x:Bind}"/>
+                                                    </MenuFlyout>
+                                                </SplitButton.Flyout>
+                                            </SplitButton>
+                                            <SplitButton Content="レビューに対応"
+                                                         AutomationProperties.Name="reviewed としてレビュー対応を起動"
+                                                         Click="OnLaunchReviewedClick"
+                                                         CommandParameter="{x:Bind}">
+                                                <SplitButton.Flyout>
+                                                    <MenuFlyout Placement="Bottom">
+                                                        <MenuFlyoutItem Text="コマンドをコピー"
+                                                                        Click="OnCopyReviewedCommandClick"
+                                                                        CommandParameter="{x:Bind}"/>
+                                                    </MenuFlyout>
+                                                </SplitButton.Flyout>
+                                            </SplitButton>
+                                            <Button AutomationProperties.Name="イベントを片付ける"
+                                                    ToolTipService.ToolTip="このイベントを一覧から片付ける"
+                                                    Click="OnDismissEventClick"
+                                                    CommandParameter="{x:Bind}"
+                                                    Padding="6,4">
+                                                <FontIcon Glyph="&#xE711;" FontSize="12"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Border>
+                <controls:GridSplitter Grid.Row="5" Height="12" HorizontalAlignment="Stretch"
+                                       ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
+                                       AutomationProperties.Name="イベントとログの高さを調整" ToolTipService.ToolTip="ドラッグまたは上下キーで高さを調整"/>
+                <Border Grid.Row="6" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="8">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Text="Recent activity"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <ListView Grid.Row="1" x:Name="LogList"
+                                  SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Border>
             </Grid>
-        </Border>
+        </ScrollViewer>
 
-        <StackPanel Grid.Row="5"
+        <StackPanel Grid.Row="3"
                     Orientation="Horizontal"
                     Spacing="8"
                     VerticalAlignment="Center">

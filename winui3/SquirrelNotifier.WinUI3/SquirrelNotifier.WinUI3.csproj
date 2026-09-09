@@ -34,6 +34,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" />
     <PackageReference Include="ModelContextProtocol.Core" />
     <PackageReference Include="System.Drawing.Common" />
 
