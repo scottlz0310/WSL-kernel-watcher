@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-Pause 関連 InfoBar（#147 / #233）の文言組み立てを `Helpers/AutoPauseInfoBarFormatter.cs` へ抽出した（#264）。`InfoBar` への代入は code-behind に残る
 - mcp-gateway の device flow ログイン（#183）の進行状態と結果解釈を `Services/GatewayLoginCoordinator.cs` へ抽出した（#265、epic #262）。多重ログインの抑止・Gateway URL の検証・`McpLoginResult` から「InfoBar を閉じるか / 購読を再開するか / どのダイアログを出すか」への変換・device flow の承認情報のうち表示するフィールドの判断が `MainWindow.xaml.cs` にあり、カバレッジ計測の対象外だった。認証処理そのものは従来どおり `McpLoginService` の責務で、`ContentDialog` の組み立て・クリップボード・`DispatcherQueue` マーシャリング・ダイアログのクローズ競合処理は code-behind に残る。挙動は変えていない。`MainWindow.xaml.cs` は 1,964 行から 1,947 行になり、行数チェックの上限も同じ値へ下げた
 - `scripts/check-code-behind-size.ps1` を追加し、CI の `lint` ジョブと lefthook の pre-commit で実行するようにした（#263）。ファイルごとの行数上限を現在の実測値に設定する ratchet 方式で、抽出が進んだら上限も下げる。上限を超える追加は同じ PR で上限を引き上げれば通るが、無意識には増やせない。上限が未登録の `*.xaml.cs` を追加した場合も失敗する。行数は空行を含む物理行数で数える（`Measure-Object -Line` は空行を数えず、エディタや `wc -l` が示す行数と食い違うため）
+- XML ドキュメントコメントの `cref` 解決を通常ビルドで検証するようにした（#271）。`GenerateDocumentationFile` が無効なあいだは解決不能な `cref` があっても CS1574 が発生せず、#263 で型を `Services/` から `Helpers/` へ移動した際に壊れた `cref` が CI・`dotnet build -c Release`・`dotnet format`・全テストを緑のまま通り抜けていた。epic #262 では型の移動を伴う抽出が続くため、同じ壊れ方を機械的に検知する。`lint` ジョブへ専用ビルドを足すのではなく `build-and-test` の既存ビルドで検証する方式を採ったので、CI のジョブもステップも増えない（ローカルの `dotnet build` でも同時に落ちる）。コメント欠落（CS1591）は既に `NoWarn` 済みの StyleCop SA1600 と同じ扱いで対象外とし、生成した XML は `PublishDocumentationFile=false` で publish 出力から除くため、配布物（MSI / zip）の中身は変わらない
+- 未解決だった `Helpers/ProcessOutputDecoder.cs` の `cref`（`ProcessStartInfo.StandardOutputEncoding`）を完全修飾名へ修正した（#271）。同ファイルは `System.Diagnostics` を `using` していないため、単純名では解決できない
 
 ## [0.8.0] - 2026-09-07
 

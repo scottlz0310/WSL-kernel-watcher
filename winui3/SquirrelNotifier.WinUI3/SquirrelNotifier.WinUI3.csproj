@@ -24,11 +24,16 @@
     <AnalysisLevel>latest-all</AnalysisLevel>
     <AnalysisMode>All</AnalysisMode>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- XML ドキュメントの cref 解決を通常ビルドで検証する（#271）。無効だと CS1574 が発生せず、
+         型の移動で壊れた cref を CI が素通りさせる。コメント欠落（CS1591）は SA1600 と同様に対象外とする。 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 生成した XML は検証の副産物であり配布物には不要。publish 出力からは除く。 -->
+    <PublishDocumentationFile>false</PublishDocumentationFile>
     <WarningsAsErrors />
     <!-- single-instance 判定を Program.cs のカスタム Main で行うため、XAML 生成の既定 Main を無効化する -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <WarningsNotAsErrors>CA1515</WarningsNotAsErrors>
-    <NoWarn>$(NoWarn);CA1001;CA1003;CA1014;CA1031;CA1063;CA1303;CA1816;CA1822;CA1823;CA1848;CA1849;CA1869;CA2007;CA2016;CA2216;CA5392;SA0001;SA1101;SA1312;SA1600;SA1601;SA1633;SA1200;SA1201;SA1202;SA1203;SA1204;SA1214;SA1402;SA1649;SA1309</NoWarn>
+    <NoWarn>$(NoWarn);CA1001;CA1003;CA1014;CA1031;CA1063;CA1303;CA1816;CA1822;CA1823;CA1848;CA1849;CA1869;CA2007;CA2016;CA2216;CA5392;SA0001;SA1101;SA1312;SA1600;SA1601;SA1633;SA1200;SA1201;SA1202;SA1203;SA1204;SA1214;SA1402;SA1649;SA1309;CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
